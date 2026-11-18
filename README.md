@@ -30,9 +30,15 @@ Cada proveedor usa su modelo configurado tanto con la clave de plataforma como c
 
 1. Selecciona texto dentro de una respuesta y pulsa **Ask about this**. También puedes usar el icono de rama de un mensaje para partir de la pregunta o respuesta completa.
 2. Escribe tu pregunta y envíala. El mapa añade un nodo, y el chat conserva la referencia y el contexto heredado.
-3. Selecciona cualquier nodo para ver su conversación. Usa los botones junto a los nodos para mostrar u ocultar sus descendientes. Puedes arrastrar el lienzo, hacer zoom, ajustarlo a la vista y redimensionar el panel en escritorio.
+3. El mapa se abre al crear una rama. Usa el botón con forma de rama o **Ctrl+Y** para mostrarlo u ocultarlo. El botón de ampliar ocupa la página dentro del navegador y permite volver al panel.
+4. Pasa el cursor sobre un nodo para ver el fragmento marcado, la rama de origen y la respuesta. Desplázate dentro de la vista previa si el contenido es largo. Con el teclado, enfoca el nodo y pulsa **↓** para entrar a la vista previa.
+5. Selecciona cualquier nodo para ver su conversación. Usa los botones junto a los nodos para mostrar u ocultar sus descendientes. Puedes arrastrar el lienzo, hacer zoom, ajustarlo a la vista y redimensionar el panel en escritorio.
 
 El historial y el tema se guardan en el navegador. Cada rama contiene únicamente sus propios mensajes y un enlace al mensaje de origen. Para construir el contexto, ThreadMap recorre sus ancestros hasta cada punto de bifurcación.
+
+## Chat temporal
+
+En una conversación nueva, activa **Chat temporal** antes de enviar el primer mensaje. La conversación y sus ramas se mantienen en memoria mientras estés en ese chat y se descartan al navegar a otro o recargar. Al solicitar una respuesta, el proveedor de IA seleccionado recibe el contexto de la rama.
 
 ## Pruebas
 

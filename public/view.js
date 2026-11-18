@@ -1,7 +1,7 @@
-import { branchTitle, rankChildren } from './threads.js';
+import { branchPreview, branchTitle, rankChildren } from './threads.js';
 
 const shapes = {
-  brand: '<path d="M4 12h4m8-7h4m-4 14h4M8 12c5 0 3-7 8-7m-8 7c5 0 3 7 8 7"/><circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="5" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="19" r="1.5" fill="currentColor" stroke="none"/>',
+  brand: '<path d="M12 2.3C10.6 7.8 6.7 12 2 13c4.8.6 8.8 3.9 10 8.7 1.2-4.8 5.2-8.1 10-8.7-4.7-1-8.6-5.2-10-10.7Zm0 0v19.4" stroke-width="1.05"/><g fill="currentColor" stroke="none"><circle cx="12" cy="2.3" r="1.65"/><circle cx="2" cy="13" r="1.25"/><circle cx="22" cy="13" r="1.25"/><circle cx="12" cy="15.3" r="1.25"/><circle cx="12" cy="21.7" r="1.35"/></g>',
   branch: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="6" r="2"/><path d="M6 7v10m0-5h6a6 6 0 0 0 6-4"/>',
   network: '<rect x="8.5" y="3" width="7" height="5" rx="1.3"/><rect x="3" y="16" width="6" height="5" rx="1.3"/><rect x="15" y="16" width="6" height="5" rx="1.3"/><path d="M12 8v4m-6 4v-2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/>',
   chat: '<path d="M20 11.5a7.8 7.8 0 0 1-8 7.5h-2l-4 2v-4A7.3 7.3 0 0 1 4 11.5 7.8 7.8 0 0 1 12 4a7.8 7.8 0 0 1 8 7.5Z"/><path d="M8.5 10h7m-7 4H13"/>',
@@ -129,21 +129,178 @@ export function responseText(content) {
   return container;
 }
 
+export function revealResponse(body, scrollArea, onFinish) {
+  const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
+  const pieces = [];
+  let total = 0;
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    const characters = Array.from(node.data);
+    if (!characters.length) continue;
+    total += characters.length;
+    pieces.push({ node, characters, end: total });
+    node.data = '';
+  }
+  const blocks = body.querySelectorAll(':scope > *, li');
+  for (const block of blocks) block.hidden = true;
+  const caret = el('span', 'typing-caret');
+  caret.setAttribute('aria-hidden', 'true');
+  const duration = Math.max(360, Math.min(7000, total * 10));
+  const started = performance.now();
+  let index = 0;
+  let written = 0;
+
+  function paint(now) {
+    if (!body.isConnected) return onFinish();
+    const target = Math.min(total, 1 + Math.floor(total * (now - started) / duration));
+    if (target > written) {
+      const follow = scrollArea.scrollHeight - scrollArea.clientHeight - scrollArea.scrollTop < 100;
+      while (index < pieces.length && written < target) {
+        const { node, characters, end } = pieces[index];
+        const depth = Math.min(characters.length, target - (end - characters.length));
+        for (let ancestor = node.parentElement; ancestor !== body; ancestor = ancestor.parentElement) {
+          if (ancestor.hidden) ancestor.hidden = false;
+        }
+        node.data = characters.slice(0, depth).join('');
+        node.after(caret);
+        written = Math.min(end, target);
+        if (target >= end) index++;
+      }
+      if (follow) scrollArea.scrollTop = scrollArea.scrollHeight;
+    }
+    if (written >= total) {
+      caret.remove();
+      for (const block of blocks) block.hidden = false;
+      onFinish();
+    } else requestAnimationFrame(paint);
+  }
+  requestAnimationFrame(paint);
+}
+
+function createBranchPreview(stage, popup) {
+  const panel = popup.parentElement;
+  let anchor = null;
+  let closeTimer;
+
+  function hide() {
+    clearTimeout(closeTimer);
+    anchor?.removeAttribute('aria-details');
+    anchor = null;
+    popup.hidden = true;
+  }
+
+  function hideSoon() {
+    clearTimeout(closeTimer);
+    closeTimer = setTimeout(() => {
+      if (!popup.matches(':hover, :focus-within') && !anchor?.matches(':hover, :focus-visible')) hide();
+    }, 260);
+  }
+
+  function position(button) {
+    const stageBox = stage.getBoundingClientRect();
+    const panelBox = panel.getBoundingClientRect();
+    const node = button.getBoundingClientRect();
+    const inset = 9;
+    const gap = 8;
+    const width = Math.min(330, stageBox.width - inset * 2);
+    const bottom = stageBox.bottom - inset;
+    const top = stageBox.top + inset;
+    popup.style.width = `${Math.max(0, width)}px`;
+    popup.style.maxHeight = `${Math.max(0, Math.min(330, bottom - top))}px`;
+    const maxLeft = stageBox.right - inset - width;
+    const minLeft = stageBox.left + inset;
+    let x = Math.max(minLeft, Math.min(maxLeft, node.left));
+    let y;
+    if (node.right + gap <= maxLeft || node.left - gap - width >= minLeft) {
+      x = node.right + gap <= maxLeft ? node.right + gap : node.left - gap - width;
+      y = Math.max(top, Math.min(bottom - popup.offsetHeight, node.top));
+    } else {
+      const below = Math.max(0, bottom - node.bottom - gap);
+      const above = Math.max(0, node.top - gap - top);
+      const placeBelow = below >= popup.offsetHeight || below >= above;
+      popup.style.maxHeight = `${Math.min(330, placeBelow ? below : above)}px`;
+      y = placeBelow ? node.bottom + gap : node.top - gap - popup.offsetHeight;
+    }
+    popup.style.left = `${x - panelBox.left - panel.clientLeft}px`;
+    popup.style.top = `${y - panelBox.top - panel.clientTop}px`;
+  }
+
+  function section(label, content) {
+    const group = el('div', 'branch-preview-section');
+    group.append(el('h4', '', label), content);
+    return group;
+  }
+
+  function show(button, { question, excerpt, origin, answer }) {
+    clearTimeout(closeTimer);
+    if (anchor === button && !popup.hidden) return;
+    anchor?.removeAttribute('aria-details');
+    anchor = button;
+    anchor.setAttribute('aria-details', popup.id);
+    const title = el('h3', 'branch-preview-question', question);
+    title.id = 'branch-preview-title';
+    popup.replaceChildren(title);
+    if (excerpt) popup.append(section('Fragmento marcado', el('blockquote', '', excerpt)));
+    if (origin) {
+      const source = el('details', 'branch-preview-source');
+      const label = origin.role === 'assistant' ? 'Ver respuesta de origen' : 'Ver pregunta de origen';
+      source.append(el('summary', '', label), responseText(origin.content));
+      popup.append(section('Rama de origen', el('p', '', origin.question)), source);
+    }
+    popup.append(section('Respuesta', answer ? responseText(answer) : el('p', 'branch-preview-empty', 'Aún no hay una respuesta.')));
+    popup.hidden = false;
+    popup.scrollTop = 0;
+    position(button);
+  }
+
+  popup.addEventListener('pointerenter', () => clearTimeout(closeTimer));
+  popup.addEventListener('pointerleave', hideSoon);
+  popup.addEventListener('focusout', hideSoon);
+  popup.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    event.stopPropagation();
+    anchor?.focus({ preventScroll: true });
+    hide();
+  });
+  return {
+    hide,
+    bind(button, thread, branchId) {
+      const open = () => show(button, branchPreview(thread, branchId));
+      button.addEventListener('pointerenter', (event) => { if (event.pointerType !== 'touch') open(); });
+      button.addEventListener('pointerleave', hideSoon);
+      button.addEventListener('focus', () => { if (button.matches(':focus-visible')) open(); });
+      button.addEventListener('blur', hideSoon);
+      button.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          open();
+          popup.focus({ preventScroll: true });
+        } else if (event.key === 'Escape' && anchor === button) {
+          event.stopPropagation();
+          hide();
+        }
+      });
+    },
+  };
+}
+
 const nodeWidth = 118;
 const nodeHeight = 79;
 const colPitch = 139;
 const rowPitch = 105;
 const padding = 19;
 
-export function createMap(stage, scene, canvas, nodeLayer, zoomLabel, onNavigate) {
+export function createMap(stage, scene, canvas, nodeLayer, zoomLabel, previewElement, onNavigate) {
   let graph = { width: 0, height: 0 };
   let view = { x: 0, y: 0, zoom: 1 };
   let drag = null;
   let autoFit = true;
   const collapsed = new Set();
   const context = canvas.getContext('2d');
+  const preview = createBranchPreview(stage, previewElement);
 
   function updateView() {
+    preview.hide();
     scene.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`;
     zoomLabel.value = `${Math.round(view.zoom * 100)}%`;
   }
@@ -197,6 +354,7 @@ export function createMap(stage, scene, canvas, nodeLayer, zoomLabel, onNavigate
   }
 
   function render(thread, activeId, activePath) {
+    preview.hide();
     nodeLayer.replaceChildren();
     if (!thread?.branches[thread.rootId].messages.length) {
       graph = { width: 0, height: 0 };
@@ -221,11 +379,11 @@ export function createMap(stage, scene, canvas, nodeLayer, zoomLabel, onNavigate
       wrapper.style.top = `${y}px`;
       const question = branchTitle(thread.branches[id]);
       const button = el('button', 'map-node');
-      button.title = question;
       if (id === activeId) button.setAttribute('aria-current', 'true');
       const glyph = el('span', 'node-glyph');
       setIcon(glyph, depth === 0 ? 'chat' : 'branch');
       button.append(glyph, el('span', 'node-question', question));
+      preview.bind(button, thread, id);
       button.onclick = () => onNavigate(id);
       wrapper.append(button);
       if (hasChildren) {
@@ -269,5 +427,18 @@ export function createMap(stage, scene, canvas, nodeLayer, zoomLabel, onNavigate
     stage.classList.remove('dragging');
   });
   new ResizeObserver(() => { if (autoFit) fit(); }).observe(stage);
-  return { render, fit, zoomBy, reveal: (ids) => ids.forEach((id) => collapsed.delete(id)) };
+  return {
+    render, fit, zoomBy, hidePreview: preview.hide,
+    reveal: (ids) => ids.forEach((id) => collapsed.delete(id)),
+    getView: () => ({ view: { ...view }, autoFit }),
+    restoreView(snapshot) {
+      if (snapshot.autoFit) {
+        fit();
+      } else {
+        view = snapshot.view;
+        autoFit = false;
+        updateView();
+      }
+    },
+  };
 }

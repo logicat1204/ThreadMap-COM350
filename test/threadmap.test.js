@@ -3,7 +3,7 @@ import { EventEmitter } from 'node:events';
 import { Readable } from 'node:stream';
 import test from 'node:test';
 import { createThreadMapServer } from '../server.js';
-import { contextFor, createBranch, createThread, message, modelInput, rankChildren } from '../public/threads.js';
+import { branchPreview, contextFor, createBranch, createThread, message, modelInput, persistentWorkspace, rankChildren } from '../public/threads.js';
 
 test('a branch inherits up to its origin, even after later turns in other branches', () => {
   const thread = createThread();
@@ -41,6 +41,42 @@ test('collapsing a node hides its descendants and retains its siblings', () => {
   assert.equal(result.links.length, 2);
   assert.equal(result.nodes.some(({ id }) => id === sister.id), true);
   assert.equal(result.nodes.some(({ id }) => id === grandchild.id), false);
+});
+
+test('temporary conversations and their branches are excluded from the saved workspace', () => {
+  const regular = createThread();
+  const temporary = createThread();
+  temporary.temporary = true;
+  const first = message('user', 'Pregunta privada');
+  temporary.branches[temporary.rootId].messages.push(first);
+  const branch = createBranch(temporary, temporary.rootId, first.id, null, 'Rama privada');
+  const saved = persistentWorkspace({
+    threads: [regular, temporary],
+    threadId: temporary.id,
+    branchId: branch.id,
+  });
+  assert.deepEqual(saved, { threads: [regular], threadId: regular.id, branchId: regular.rootId });
+  assert.doesNotMatch(JSON.stringify(saved), /privada/);
+  assert.equal(temporary.branches[branch.id].messages[0].content, 'Rama privada');
+});
+
+test('a branch preview uses its exact source message and its own first answer', () => {
+  const thread = createThread();
+  const root = thread.branches[thread.rootId];
+  root.messages.push(message('user', 'Pregunta original'));
+  const source = message('assistant', 'Respuesta con un término de referencia');
+  root.messages.push(source, message('assistant', 'Otra respuesta distinta'));
+  const branch = createBranch(thread, root.id, source.id, 'término de referencia', '¿Qué significa?');
+  branch.messages.push(message('assistant', 'Explicación propia de la rama'));
+  branch.messages.push(message('user', 'Siguiente pregunta'), message('assistant', 'Siguiente respuesta'));
+
+  assert.deepEqual(branchPreview(thread, branch.id), {
+    question: '¿Qué significa?',
+    excerpt: 'término de referencia',
+    origin: { question: 'Pregunta original', role: 'assistant', content: source.content },
+    answer: 'Explicación propia de la rama',
+  });
+  assert.equal(branchPreview(thread, root.id).origin, null);
 });
 
 async function callRoute(server, { method = 'POST', path = '/api/chat', body, authorization, origin } = {}) {

@@ -7,6 +7,16 @@ export function createThread() {
   return { id: crypto.randomUUID(), rootId: root.id, title: 'Nueva conversación', branches: { [root.id]: root }, updatedAt: root.createdAt };
 }
 
+export function persistentWorkspace({ threads, threadId, branchId }) {
+  const persistent = threads.filter((thread) => !thread.temporary);
+  const active = persistent.find((thread) => thread.id === threadId);
+  return {
+    threads: persistent,
+    threadId: active?.id ?? persistent[0]?.id ?? null,
+    branchId: active?.branches[branchId]?.id ?? active?.rootId ?? persistent[0]?.rootId ?? null,
+  };
+}
+
 export function createBranch(thread, parentId, originMessageId, excerpt, question, excerptRange = null) {
   const anchor = thread.branches[parentId]?.messages.find((entry) => entry.id === originMessageId);
   if (!anchor) throw new Error('El mensaje de origen no pertenece a esa rama.');
@@ -45,6 +55,18 @@ export function modelInput(thread, branchId) {
 
 export function branchTitle(branch) {
   return branch?.messages[0]?.content ?? 'Nueva conversación';
+}
+
+export function branchPreview(thread, branchId) {
+  const branch = thread.branches[branchId];
+  const parent = thread.branches[branch.parentId];
+  const source = parent?.messages.find((entry) => entry.id === branch.originMessageId);
+  return {
+    question: branchTitle(branch),
+    excerpt: branch.excerpt,
+    origin: source ? { question: branchTitle(parent), role: source.role, content: source.content } : null,
+    answer: branch.messages.find((entry) => entry.role === 'assistant')?.content ?? null,
+  };
 }
 
 export function rankChildren(thread, collapsed) {
