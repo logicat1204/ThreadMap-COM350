@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Conversaciones con IA que puedes explorar en distintas ramas.">
+  <title>ThreadMap</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23704ce4'/%3E%3Cpath d='M9 16h4m6-7h4m-4 14h4m-10-7c4 0 2-7 6-7m-6 7c4 0 2 7 6 7' fill='none' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <div class="workspace" id="workspace">
+    <button class="scrim" id="scrim" aria-label="Cerrar paneles" hidden></button>
+    <aside class="sidebar" id="sidebar" aria-label="Historial">
+      <div class="brand-row">
+        <a class="brand" href="/" aria-label="ThreadMap"><span class="brand-mark" data-icon="brand"></span>Thread<span>Map</span></a>
+        <button class="icon-button sidebar-close" id="sidebar-close" data-icon="panel-left" aria-label="Cerrar historial" title="Cerrar historial"></button>
+      </div>
+      <button class="new-chat" id="new-chat"><span data-icon="plus"></span>Nueva conversación</button>
+      <div class="history-heading"><h2>Conversaciones</h2><button class="icon-button small" id="search-toggle" data-icon="search" aria-label="Buscar conversaciones" title="Buscar conversaciones" aria-expanded="false"></button></div>
+      <input type="search" id="history-search" class="history-search" placeholder="Buscar…" aria-label="Buscar conversaciones" hidden>
+      <nav class="history" id="history" aria-label="Conversaciones"></nav>
+      <div class="sidebar-footer">
+        <button class="utility" id="theme-control"><span data-icon="moon"></span><span id="theme-label">Modo oscuro</span></button>
+        <button class="utility" id="settings-open"><span data-icon="settings"></span><span>Configuración</span></button>
+        <div class="workspace-account"><span class="account-avatar" data-icon="layers"></span><div><strong>Mi espacio</strong><small>Espacio local</small></div></div>
+      </div>
+    </aside>
+
+    <main class="chat" aria-label="Chat">
+      <header class="chat-header">
+        <button class="icon-button sidebar-open" id="sidebar-open" data-icon="panel-left" aria-label="Abrir historial" title="Abrir historial"></button>
+        <div class="chat-identity"><span class="chat-symbol" data-icon="chat"></span><div><h1 id="chat-title">Fundamentos de redes</h1><span id="chat-subtitle" class="chat-subtitle"></span></div></div>
+        <div class="header-actions">
+          <button class="connection" id="connection" title="Configurar conexión de IA"><span class="connection-dot"></span><span id="connection-label">Modo demo</span><span data-icon="chevron-down"></span></button>
+          <button class="icon-button map-open" id="map-open" data-icon="panel-right" aria-label="Abrir mapa" title="Abrir mapa"></button>
+        </div>
+      </header>
+      <div class="chat-scroll" id="chat-scroll">
+        <div id="messages" class="messages" aria-label="Mensajes de la conversación"></div>
+      </div>
+      <footer class="composer-area">
+        <div class="composer-inner">
+          <div class="chat-error" id="chat-error" role="alert" hidden><span data-icon="info"></span><p id="error-text"></p><button class="text-button" id="error-action"></button></div>
+          <form id="composer" class="composer">
+            <div id="composer-quote" class="composer-quote" hidden><span data-icon="branch"></span><div><strong>Nueva rama</strong><span id="composer-excerpt"></span></div><button type="button" class="icon-button small" id="quote-remove" data-icon="x" aria-label="Quitar referencia" title="Quitar referencia"></button></div>
+            <textarea id="prompt" aria-label="Escribe tu pregunta" placeholder="Escribe tu pregunta…" rows="1" maxlength="16000" required></textarea>
+            <div class="composer-controls">
+              <button type="button" class="composer-map icon-button" id="composer-map" data-icon="branch" aria-label="Mostrar mapa de conversación" title="Mostrar mapa de conversación"></button>
+              <button type="submit" id="send" class="send" data-icon="arrow-up" aria-label="Enviar pregunta" title="Enviar pregunta" disabled></button>
+            </div>
+          </form>
+          <p class="composer-help"><span data-icon="branch"></span>Selecciona texto de una respuesta para abrir una nueva rama.</p>
+        </div>
+      </footer>
+    </main>
+
+    <aside class="map-panel" id="map-panel" aria-label="Mapa de conversación">
+      <div class="map-resize" id="map-resize" tabindex="0" role="separator" aria-label="Ancho del mapa" aria-orientation="vertical"></div>
+      <header class="map-header">
+        <div class="map-heading"><span class="map-mark" data-icon="network"></span><div><h2>Mapa de conversación</h2><p id="map-count"></p></div></div>
+        <div class="map-actions">
+          <button class="icon-button" id="map-expand" data-icon="maximize" aria-label="Expandir mapa" title="Expandir mapa"></button>
+          <button class="icon-button" id="map-close" data-icon="panel-right" aria-label="Ocultar mapa" title="Ocultar mapa"></button>
+        </div>
+      </header>
+      <div class="map-stage" id="map-stage" aria-label="Árbol de ramificaciones">
+        <div class="map-scene" id="map-scene"><canvas id="map-lines" aria-hidden="true"></canvas><div id="map-nodes"></div></div>
+        <div class="map-empty" id="map-empty" hidden><span data-icon="network"></span><p>Tu mapa comienza con la primera pregunta.</p></div>
+        <div class="map-tools">
+          <div class="zoom-group"><button class="icon-button small" id="zoom-out" data-icon="minus" title="Alejar" aria-label="Alejar"></button><output id="zoom-level">100%</output><button class="icon-button small" id="zoom-in" data-icon="plus" title="Acercar" aria-label="Acercar"></button></div>
+          <button class="icon-button recenter" id="zoom-fit" data-icon="focus" title="Ajustar a la vista" aria-label="Ajustar a la vista"></button>
+        </div>
+      </div>
+      <footer class="map-footer"><span><i class="legend-root"></i>Principal</span><span><i class="legend-branch"></i>Rama</span><span><i class="legend-sub"></i>Subrama</span></footer>
+    </aside>
+  </div>
+
+  <button class="ask-selection" id="ask-selection" hidden><span data-icon="branch"></span>Ask about this</button>
+  <dialog id="settings" aria-labelledby="settings-title">
+    <form id="settings-form" class="settings-form">
+      <div class="settings-heading"><span class="map-mark" data-icon="key"></span><div><h2 id="settings-title">Conexión de IA</h2><p>Elige el proveedor y la clave que usará tu chat.</p></div><button type="button" class="icon-button" id="settings-close" data-icon="x" aria-label="Cerrar configuración" title="Cerrar configuración"></button></div>
+      <fieldset class="provider-options">
+        <legend>Proveedor</legend>
+        <label class="mode-option"><input type="radio" name="provider" value="openai" checked><strong>OpenAI</strong></label>
+        <label class="mode-option"><input type="radio" name="provider" value="gemini"><strong>Gemini</strong></label>
+      </fieldset>
+      <fieldset>
+        <legend>Modo de conexión</legend>
+        <label class="mode-option"><input type="radio" name="mode" value="platform"><span><strong>Clave de la plataforma</strong><small id="platform-note"></small></span></label>
+        <label class="mode-option"><input type="radio" name="mode" value="personal"><span><strong>Mi propia clave</strong><small id="personal-note"></small></span></label>
+      </fieldset>
+      <div class="personal-fields" id="personal-fields" hidden>
+        <label for="personal-key" id="personal-key-label">Clave API de OpenAI</label>
+        <div class="key-entry"><input type="password" id="personal-key" placeholder="sk-…" maxlength="512" autocomplete="off" spellcheck="false"><button type="button" class="icon-button" id="reveal-key" data-icon="eye" title="Mostrar clave" aria-label="Mostrar clave"></button></div>
+        <small>Se guarda en memoria hasta que recargues o cierres la página.</small>
+      </div>
+      <p id="settings-error" class="settings-error" role="alert" hidden></p>
+      <div class="settings-footer"><span id="model-label"></span><button class="primary-button" type="submit">Guardar conexión</button></div>
+    </form>
+  </dialog>
+  <div class="toast" id="toast" role="status" hidden></div>
+</body>
+</html>
