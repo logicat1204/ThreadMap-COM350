@@ -366,8 +366,6 @@ h1, h2, h3, p { margin: 0; }
   overflow-wrap: anywhere;
 }
 .user-bubble p { white-space: pre-wrap; }
-.user-action { opacity: 0; position: absolute; transform: translateY(-100%) translateX(-6px); }
-.message.user:hover .user-action, .user-action:focus-visible { opacity: 1; }
 .fork-label { float: left; display: flex; align-items: center; margin: 3px 8px 0 0; color: var(--accent-strong); }
 .fork-label svg { width: 13px; height: 13px; }
 .user-reference { border-left: 2px solid var(--accent); padding-left: 9px; margin: 0 0 9px 22px; color: var(--muted); font-size: 12.5px; font-weight: 400; max-height: 88px; overflow: auto; }
@@ -738,9 +736,6 @@ dialog.conversation-search { width: 620px; max-width: calc(100vw - 32px); max-he
   .composer { padding-inline: 13px 10px; }
   .chat-empty .composer textarea { min-height: 61px; }
   .map-header { padding-inline: 12px; }
-}
-@media (hover: none) {
-  .user-action { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
   :root { --panel-duration: 0s; }

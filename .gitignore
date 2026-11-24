@@ -1,8 +1,39 @@
+# Dependencies
 node_modules/
-.env*
+
+# Local configuration and credentials (keep the public example)
+.env
+.env.*
 !.env.example
-coverage/
-data/
+.aws/
+*.pem
+*.key
+
+# Accounts, sessions and local databases
+/data/
 *.sqlite
-*.sqlite-shm
-*.sqlite-wal
+*.sqlite-*
+*.db
+*.db-*
+session-secret
+
+# Generated previews, test results and logs
+/outputs/
+coverage/
+test-results/
+playwright-report/
+*.log
+
+# Local agent and editor state
+.codex/
+.agents/
+.vscode/
+.idea/
+
+# Operating-system and Office temporary files
+.DS_Store
+Thumbs.db
+Desktop.ini
+~$*
+*.tmp
+*.swp

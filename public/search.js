@@ -55,7 +55,7 @@ export function searchConversations(threads, query) {
   const terms = termsFor(query);
   const includes = (text) => { const value = fold(text); return terms.every((term) => value.includes(term)); };
   const results = [];
-  for (const thread of [...threads].filter((item) => !item.temporary).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))) {
+  for (const thread of [...threads].filter((item) => !item.temporary && item.branches[item.rootId].messages.length).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))) {
     for (const branch of Object.values(thread.branches)) {
       const root = branch.id === thread.rootId;
       if (!terms.length && !root) continue;

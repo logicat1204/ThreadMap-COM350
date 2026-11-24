@@ -47,10 +47,9 @@ function writePreference(key, value) {
 }
 
 function initialState() {
-  const saved = account.workspace;
-  if (saved?.threads?.length) return saved;
-  const threads = [createThread()];
-  return { threads, threadId: threads[0].id, branchId: threads[0].rootId };
+  const blank = createThread();
+  const saved = account.workspace?.threads?.filter((thread) => !thread.temporary && thread.branches[thread.rootId].messages.length) || [];
+  return { threads: [blank, ...saved], threadId: blank.id, branchId: blank.rootId };
 }
 
 const state = initialState();
@@ -102,7 +101,7 @@ function notify(text) {
 }
 
 let revision = account.revision;
-let savedSnapshot = JSON.stringify(account.workspace);
+let savedSnapshot = JSON.stringify(account.workspace || { threads: [], threadId: null, branchId: null });
 let pendingSnapshot = null;
 let saveInFlight = null;
 let saveTimer;
@@ -199,7 +198,7 @@ try {
 function renderHistory() {
   const history = byId('history');
   history.replaceChildren();
-  const list = state.threads.filter((thread) => !thread.temporary)
+  const list = state.threads.filter((thread) => !thread.temporary && thread.branches[thread.rootId].messages.length)
     .sort((first, second) => second.updatedAt.localeCompare(first.updatedAt));
   const today = new Date().toDateString();
   const groups = [
@@ -225,7 +224,7 @@ function renderHistory() {
     }
     history.append(group);
   }
-  if (!list.length) history.append(el('p', 'history-no-results', 'No se encontraron conversaciones.'));
+  if (!list.length) history.append(el('p', 'history-no-results', 'Tus conversaciones aparecerán aquí.'));
 }
 
 function renderSearch() {
@@ -345,6 +344,7 @@ function renderConnection() {
 }
 
 function selectReference(entry, excerpt = null, excerptRange = null) {
+  if (entry.role !== 'assistant') return;
   const selection = draft();
   selection.source = { branchId: entry.branchId, messageId: entry.id, excerpt, excerptRange, content: entry.content };
   dismissSelection();
@@ -404,7 +404,7 @@ function renderMessage(entry) {
       bubble.append(el('blockquote', 'user-reference', entry.reference || source?.content || ''));
     }
     bubble.append(el('p', '', entry.content));
-    userContent.append(bubble, action('Crear rama desde la pregunta', 'branch', branchAction, 'icon-button small user-action'));
+    userContent.append(bubble);
     row.append(userContent);
   } else {
     row.append(responseText(entry.content));

@@ -19,7 +19,7 @@ El primer inicio crea automáticamente `data/threadmap.sqlite` y `data/session-s
 
 Puedes ajustar `DATABASE_PATH`, `APP_URL` y `BETTER_AUTH_SECRET` en `.env`. En local, `APP_URL` se calcula a partir de `PORT` si no se configura. Si especificas un secreto propio, debe tener al menos 32 caracteres. El servidor continúa restringido a conexiones locales; el despliegue público y su proxy HTTPS se configurarán por separado.
 
-Las cuentas nuevas empiezan con un chat vacío. Si tu navegador conserva conversaciones de la versión anterior, aparece **Importar historial local**: solo se copian a la cuenta con la que confirmes la importación y el original permanece en el navegador.
+Cada vez que abres la aplicación empiezas en un chat vacío. Los chats vacíos y los borradores no aparecen en **Conversaciones** ni se guardan en SQLite: se incorporan al enviar el primer mensaje. Si tu navegador conserva conversaciones de la versión anterior, aparece **Importar historial local**: solo se copian a la cuenta con la que confirmes la importación y el original permanece en el navegador.
 
 El guardado es automático. Si falla, puedes reintentarlo o descargar tus cambios en JSON. Si otra pestaña modificó el historial, se evita sobrescribirla y se ofrece descargar los cambios antes de recargar. Las claves personales de IA siguen solo en memoria y no se guardan en SQLite.
 
@@ -41,13 +41,17 @@ Cada proveedor usa su modelo configurado tanto con la clave de plataforma como c
 
 ## Explorar ramas
 
-1. Selecciona texto dentro de una respuesta y pulsa **Ask about this**. También puedes usar el icono de rama de un mensaje para partir de la pregunta o respuesta completa.
+1. Selecciona texto dentro de una respuesta y pulsa **Ask about this**. También puedes usar el icono de rama de una respuesta del asistente para partir de ella completa. Los mensajes del usuario no ofrecen la acción de crear ramas.
 2. Escribe tu pregunta y envíala. El mapa añade un nodo, y el chat conserva la referencia y el contexto heredado.
-3. El mapa se abre al crear una rama. Un único botón con forma de rama se desplaza entre el chat y el encabezado del mapa al mostrarlo u ocultarlo; también puedes usar **Ctrl+Y**. El botón de ampliar abre una ventana grande con bordes redondeados y fondo desenfocado. **Escape**, el fondo exterior o el botón de restaurar permiten volver al panel.
+3. En **Configuración → Mapa de conversación** puedes elegir si el mapa se abre al crear una rama. Si lo desactivas, se mantiene cerrado y se anima su icono; un mapa que ya está abierto permanece abierto. La preferencia se guarda por cuenta en ese navegador, sin necesidad de configurar una clave de IA. Un único botón con forma de rama se desplaza entre el chat y el encabezado del mapa al mostrarlo u ocultarlo; al pasar el cursor indica la acción de abrir o cerrar. También puedes usar **Ctrl+Y**. El botón de ampliar abre una ventana grande con bordes redondeados y fondo desenfocado. **Escape**, el fondo exterior o el botón de restaurar permiten volver al panel.
 4. Pasa el cursor sobre un nodo para ver el fragmento marcado, la rama de origen y la respuesta. Desplázate dentro de la vista previa si el contenido es largo. Con el teclado, enfoca el nodo y pulsa **↓** para entrar a la vista previa.
 5. Selecciona cualquier nodo para ver su conversación. Usa los botones junto a los nodos para mostrar u ocultar sus descendientes. Puedes arrastrar el lienzo, hacer zoom, ajustarlo a la vista y redimensionar el panel en escritorio.
 
 El historial se guarda en el servidor por cuenta. El tema se guarda en el navegador. Cada rama contiene únicamente sus propios mensajes y un enlace al mensaje de origen. Para construir el contexto, ThreadMap recorre sus ancestros hasta cada punto de bifurcación.
+
+**Ctrl+B** abre o cierra el panel izquierdo. **Buscar conversaciones** abre una ventana con fondo desenfocado: busca en títulos y mensajes, sin distinguir mayúsculas ni tildes, y agrupa las coincidencias por conversación y rama. Usa **↑/↓** y **Enter**, o selecciona un resultado, para ir directamente al mensaje. Los chats temporales y vacíos quedan fuera de la búsqueda.
+
+Ambos proveedores reciben la instrucción: `responde de forma directa, breve y muy tecnica.`
 
 ## Chat temporal
 

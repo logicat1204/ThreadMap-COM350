@@ -50,6 +50,7 @@ test('collapsing a node hides its descendants and retains its siblings', () => {
 
 test('temporary conversations and their branches are excluded from the saved workspace', () => {
   const regular = createThread();
+  regular.branches[regular.rootId].messages.push(message('user', 'Pregunta permanente'));
   const temporary = createThread();
   temporary.temporary = true;
   const first = message('user', 'Pregunta privada');
@@ -82,6 +83,15 @@ test('a branch preview uses its exact source message and its own first answer', 
     answer: 'Explicación propia de la rama',
   });
   assert.equal(branchPreview(thread, root.id).origin, null);
+});
+
+test('empty conversations stay out of persistence until their first message', () => {
+  const blank = createThread();
+  assert.deepEqual(persistentWorkspace({ threads: [blank], threadId: blank.id, branchId: blank.rootId }), {
+    threads: [], threadId: null, branchId: null,
+  });
+  blank.branches[blank.rootId].messages.push(message('user', 'Mi primera pregunta'));
+  assert.equal(persistentWorkspace({ threads: [blank], threadId: blank.id, branchId: blank.rootId }).threads.length, 1);
 });
 
 async function callRoute(server, { method = 'POST', path = '/api/chat', body, authorization, origin } = {}) {
@@ -129,6 +139,7 @@ test('platform and personal credentials reach OpenAI only in their own modes', a
   assert.deepEqual(personal, { status: 200, data: { answer: 'Una respuesta', incomplete: false } });
   assert.deepEqual(requests.map((request) => request.authorization), ['Bearer fixture-platform', authorization]);
   assert.equal(requests[0].url, 'https://api.openai.com/v1/responses');
+  assert.equal(requests[0].input.instructions, 'responde de forma directa, breve y muy tecnica.');
   assert.equal(requests[0].input.store, false);
   assert.deepEqual(requests[0].input.input, messages);
 });
@@ -184,7 +195,7 @@ test('Gemini receives the selected key and ordered branch history in its native 
       { role: 'model', parts: [{ text: history[1].content }] },
       { role: 'user', parts: [{ text: history[2].content }, { text: history[3].content }] },
     ]);
-    assert.match(request.body.systemInstruction.parts[0].text, /ThreadMap/);
+    assert.equal(request.body.systemInstruction.parts[0].text, 'responde de forma directa, breve y muy tecnica.');
   }
   const { data } = await callRoute(server, { method: 'GET', path: '/api/config' });
   assert.deepEqual(data.providers.gemini, { platformAvailable: true, model: 'gemini-3.1-flash-lite' });

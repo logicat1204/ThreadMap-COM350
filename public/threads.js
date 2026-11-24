@@ -8,7 +8,7 @@ export function createThread() {
 }
 
 export function persistentWorkspace({ threads, threadId, branchId }) {
-  const persistent = threads.filter((thread) => !thread.temporary);
+  const persistent = threads.filter((thread) => !thread.temporary && thread.branches[thread.rootId].messages.length > 0);
   const active = persistent.find((thread) => thread.id === threadId);
   return {
     threads: persistent,

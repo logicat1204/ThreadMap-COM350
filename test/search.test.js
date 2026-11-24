@@ -32,10 +32,14 @@ test('search is accent-insensitive and highlights original characters without re
 test('search excludes temporary chats and returns recent roots for an empty query', () => {
   const old = createThread();
   old.title = 'Primera idea'; old.updatedAt = '2025-01-01T00:00:00.000Z';
+  old.branches[old.rootId].messages.push(message('user', 'Primera pregunta'));
   const recent = createThread();
   recent.title = 'Segunda idea'; recent.updatedAt = '2026-01-01T00:00:00.000Z';
+  recent.branches[recent.rootId].messages.push(message('user', 'Segunda pregunta'));
   const temporary = createThread();
   temporary.title = 'Idea temporal'; temporary.temporary = true;
+  const blank = createThread();
+  assert.equal(searchConversations([blank], '').length, 0);
   assert.deepEqual(searchConversations([old, temporary, recent], '').map((entry) => entry.threadId), [recent.id, old.id]);
   assert.equal(searchConversations([old, temporary, recent], 'temporal').length, 0);
   assert.equal(searchConversations([recent], 'segunda').length, 1);
