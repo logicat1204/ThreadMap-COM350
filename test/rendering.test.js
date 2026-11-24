@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { JSDOM } from 'jsdom';
-import { responseText, revealResponse } from '../public/view.js';
+import { renderBranchPreview, responseText, revealResponse } from '../public/view.js';
 
 const dom = new JSDOM('<!doctype html><html><body></body></html>');
 globalThis.document = dom.window.document;
@@ -56,4 +56,25 @@ test('rich responses keep their equations and code intact during reveal', () => 
   revealResponse(result, {}, () => { finished = true; });
   assert.ok(finished);
   assert.equal(result.innerHTML, before);
+});
+
+test('branch previews show the exact fragment, original reply and branch answer', () => {
+  const popup = document.createElement('div');
+  const title = renderBranchPreview(popup, {
+    question: '¿Y si caduca?',
+    excerpt: 'certificado digital',
+    origin: { question: '¿Cómo funciona HTTPS?', role: 'assistant', content: 'El sitio presenta un **certificado digital**.' },
+    answer: 'El navegador muestra una **advertencia**.',
+  });
+  assert.equal(popup.firstElementChild, title);
+  assert.equal(title.textContent, '¿Y si caduca?');
+  assert.deepEqual([...popup.querySelectorAll('h4')].map((heading) => heading.textContent), ['Fragmento marcado', 'Rama de origen', 'Respuesta']);
+  assert.equal(popup.querySelector('blockquote').textContent, 'certificado digital');
+  assert.equal(popup.querySelector('details summary').textContent, 'Ver respuesta de origen');
+  assert.equal(popup.querySelector('details strong').textContent, 'certificado digital');
+  assert.equal(popup.querySelector('.branch-preview-section:last-child strong').textContent, 'advertencia');
+
+  renderBranchPreview(popup, { question: 'Conversación principal', answer: 'Respuesta inicial.' });
+  assert.equal(popup.querySelector('blockquote, details'), null);
+  assert.equal(popup.querySelector('h4').textContent, 'Respuesta');
 });
