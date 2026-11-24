@@ -26,7 +26,7 @@
         <p class="auth-error" id="auth-error" role="alert" hidden></p>
         <button class="primary-button auth-submit" id="auth-submit" type="submit">Iniciar sesión</button>
         <p class="auth-switch"><span id="auth-switch-label">¿Primera vez aquí?</span> <button type="button" id="auth-switch">Crear una cuenta</button></p>
-        <p class="auth-note">Demo · Registro sin confirmación de correo.<br>Usa una contraseña de prueba. No hay recuperación por email.</p>
+        <p class="auth-note">Demo · Registro sin confirmación de correo.<br>Si olvidas tu contraseña, solicita un enlace al administrador.</p>
       </form>
       <p id="auth-loading" role="status">Abriendo tu espacio…</p>
     </div>
@@ -50,6 +50,7 @@
         <div class="sidebar-footer">
           <button class="utility" id="theme-control"><span data-icon="moon"></span><span id="theme-label">Modo oscuro</span></button>
           <button class="utility" id="settings-open"><span data-icon="settings"></span><span>Configuración</span></button>
+          <a class="utility admin-link" id="admin-open" href="/admin" hidden><span data-icon="key"></span><span>Administración</span></a>
           <div class="workspace-account"><span class="account-avatar" id="account-avatar">T</span><div><strong id="account-name">Mi espacio</strong><small id="account-status" role="status">Guardado</small></div><button class="icon-button small" id="logout" data-icon="logout" title="Cerrar sesión" aria-label="Cerrar sesión"></button></div>
         </div>
       </div>

@@ -3,9 +3,11 @@ import { getMigrations } from 'better-auth/db/migration';
 import { fromNodeHeaders, toNodeHandler } from 'better-auth/node';
 import Database from 'better-sqlite3';
 import { randomBytes } from 'node:crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { appOrigin } from './runtime.js';
+import { createAdministration } from './administration.js';
 
 export class AccountError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -89,9 +91,15 @@ export async function createAccounts({
     if (['127.0.0.1', 'localhost', '[::1]'].includes(origin.hostname)) {
       for (const host of ['127.0.0.1', 'localhost', '[::1]']) trustedOrigins.push(`${origin.protocol}//${host}:${origin.port}`);
     }
+    const resetCapture = new AsyncLocalStorage();
+    let administration;
     const auth = betterAuth({
       appName: 'ThreadMap', baseURL, secret, database: db, trustedOrigins,
-      emailAndPassword: { enabled: true, requireEmailVerification: false, minPasswordLength: 8, maxPasswordLength: 128 },
+      emailAndPassword: { enabled: true, requireEmailVerification: false, minPasswordLength: 8, maxPasswordLength: 128,
+        resetPasswordTokenExpiresIn: 900, revokeSessionsOnPasswordReset: true,
+        async sendResetPassword({ token }) { const capture = resetCapture.getStore(); if (capture) capture.token = token; },
+      },
+      databaseHooks: { session: { create: { after: async (session) => { administration?.recordLogin(session.userId); } } } },
       session: { expiresIn: 60 * 60 * 24 * 7, updateAge: 60 * 60 * 24, cookieCache: { enabled: false } },
       rateLimit: { enabled: true, storage: 'database', window: 60, max: 60,
         customRules: {
@@ -109,13 +117,24 @@ export async function createAccounts({
       user_id TEXT PRIMARY KEY REFERENCES user(id) ON DELETE CASCADE,
       used INTEGER NOT NULL DEFAULT 0 CHECK (used >= 0)
     )`);
-    const usage = db.prepare('SELECT used FROM platform_usage WHERE user_id = ?');
+    if (!db.pragma('table_info(platform_usage)').some((column) => column.name === 'allowance')) {
+      db.exec('ALTER TABLE platform_usage ADD COLUMN allowance INTEGER NOT NULL DEFAULT 5 CHECK (allowance >= 0)');
+    }
+    administration = createAdministration({ db, directory: dirname(resolve(databasePath)), origin: origin.origin,
+      async issueReset(email) {
+        const capture = {};
+        await resetCapture.run(capture, () => auth.api.requestPasswordReset({ body: { email, redirectTo: `${origin.origin}/restablecer` } }));
+        if (!capture.token) throw new AccountError(500, 'No se pudo generar el enlace de recuperación.');
+        return capture.token;
+      },
+    });
+    const usage = db.prepare('SELECT used, allowance FROM platform_usage WHERE user_id = ?');
     const addUsage = db.prepare('INSERT OR IGNORE INTO platform_usage (user_id) VALUES (?)');
-    const reserve = db.prepare('UPDATE platform_usage SET used = used + 1 WHERE user_id = ? AND used < ?');
+    const reserve = db.prepare('UPDATE platform_usage SET used = used + 1 WHERE user_id = ? AND used < allowance');
     const refund = db.prepare('UPDATE platform_usage SET used = used - 1 WHERE user_id = ? AND used > 0');
     const reserveMessage = db.transaction((userId) => {
       addUsage.run(userId);
-      return reserve.run(userId, FREE_MESSAGE_LIMIT).changes === 1;
+      return reserve.run(userId).changes === 1;
     });
     const load = db.prepare('SELECT document, revision FROM workspace WHERE user_id = ?');
     const insert = db.prepare('INSERT OR IGNORE INTO workspace (user_id, document, revision) VALUES (?, ?, 0)');
@@ -131,9 +150,12 @@ export async function createAccounts({
     return {
       authHandler: toNodeHandler(auth),
       async getSession(request) { return auth.api.getSession({ headers: fromNodeHeaders(request.headers) }); },
+      administration,
       getUsage(userId) {
-        const used = usage.get(userId)?.used ?? 0;
-        return { limit: FREE_MESSAGE_LIMIT, used, remaining: Math.max(0, FREE_MESSAGE_LIMIT - used) };
+        const row = usage.get(userId);
+        const used = row?.used ?? 0;
+        const limit = row?.allowance ?? FREE_MESSAGE_LIMIT;
+        return { limit, used, remaining: Math.max(0, limit - used) };
       },
       reserveMessage,
       refundMessage(userId) { refund.run(userId); },

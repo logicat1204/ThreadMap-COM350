@@ -622,10 +622,25 @@ function updateError() {
   byId('error-text').textContent = issue || (hasKey
     ? 'La pregunta está pendiente de respuesta.'
     : connection.mode === 'platform' && usage.remaining === 0
-      ? 'Usaste tus 5 mensajes gratuitos. Añade tu propia API key para continuar.'
+      ? 'Agotaste tus mensajes de plataforma. Añade tu API key o solicita más al administrador.'
       : `Conecta ${providerNames[connection.provider]} para responder a esta pregunta.`);
   byId('error-action').textContent = hasKey ? 'Reintentar' : 'Configurar API';
-  byId('error-action').onclick = () => hasKey ? reply(currentThread(), currentBranch()) : openSettings();
+  byId('error-action').onclick = async () => {
+    if (connection.mode === 'platform' && usage.remaining === 0) await refreshUsage();
+    if (canReply()) reply(currentThread(), currentBranch());
+    else openSettings();
+  };
+}
+
+async function refreshUsage() {
+  try {
+    const response = await fetch('/api/usage');
+    if (!response.ok) return;
+    usage = (await response.json()).usage;
+    renderConnection();
+    updateError();
+    if (settings.open) updateSettingsFields();
+  } catch { /* The server enforces the allowance even when this refresh fails. */ }
 }
 
 async function reply(thread, branch) {
@@ -681,14 +696,17 @@ async function reply(thread, branch) {
   }
 }
 
-function sendQuestion(event) {
+async function sendQuestion(event) {
   event.preventDefault();
   const { text, source } = draft();
   const question = text.trim();
+  const submittedBranchId = state.branchId;
   if (!question || requests.has(state.branchId) || typing.has(state.branchId)) return;
   if (connection.mode === 'platform' && usage.remaining === 0) {
-    openSettings();
-    return;
+    await refreshUsage();
+    if (state.branchId !== submittedBranchId || draft().text !== text) return;
+    if (usage.remaining === 0) { openSettings(); return; }
+    if (requests.has(state.branchId) || typing.has(state.branchId)) return;
   }
   const thread = currentThread();
   let branch = currentBranch();
@@ -767,8 +785,8 @@ function updateSettingsFields() {
   const exhausted = usage.remaining === 0;
   settingsForm.querySelector('[name="mode"][value="platform"]').disabled = exhausted;
   byId('usage-note').textContent = exhausted
-    ? 'Usaste tus 5 mensajes gratuitos. Para continuar, conecta tu propia API key.'
-    : `${usage.remaining} de ${usage.limit} mensajes gratuitos disponibles por cuenta. Se comparten entre conversaciones y proveedores.`;
+    ? 'Agotaste tus mensajes de plataforma. Conecta tu API key o solicita más al administrador.'
+    : `${usage.remaining} de ${usage.limit} mensajes de plataforma disponibles. Se comparten entre conversaciones y proveedores.`;
   byId('usage-note').classList.toggle('exhausted', exhausted);
   byId('personal-note').textContent = isGemini
     ? 'Usa la cuota del proyecto asociado a tu clave de Google AI Studio.'
@@ -1101,16 +1119,8 @@ applyTheme();
 updatePanels();
 navigate(state.threadId, state.branchId);
 renderConnection();
-window.addEventListener('focus', async () => {
-  try {
-    const response = await fetch('/api/usage');
-    if (!response.ok) return;
-    usage = (await response.json()).usage;
-    renderConnection();
-    updateError();
-    if (settings.open) updateSettingsFields();
-  } catch { /* The server still enforces the quota if this refresh fails. */ }
-});
+window.addEventListener('focus', refreshUsage);
+setInterval(() => { if (!document.hidden) refreshUsage(); }, 60_000);
 fetch('/api/config')
   .then(async (response) => {
     if (!response.ok) return;

@@ -58,7 +58,7 @@ jobs:
       - name: Package the tested source
         run: |
           git archive --format=tar.gz --output threadmap.tar.gz HEAD \
-            package.json package-lock.json server.js accounts.js runtime.js public
+            package.json package-lock.json server.js accounts.js administration.js runtime.js public
       - name: Upload and deploy
         shell: bash
         run: |

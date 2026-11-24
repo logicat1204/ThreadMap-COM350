@@ -2,6 +2,7 @@ import { setIcon } from './view.js';
 
 const byId = (id) => document.getElementById(id);
 let signingUp = new URLSearchParams(location.search).get('modo') === 'registro';
+const returnToAdmin = new URLSearchParams(location.search).get('next') === 'admin';
 
 function setPasswordVisibility(visible) {
   byId('auth-password').type = visible ? 'text' : 'password';
@@ -47,7 +48,7 @@ renderAuthMode();
 byId('auth-switch').onclick = () => {
   signingUp = !signingUp;
   renderAuthMode();
-  history.replaceState(null, '', `/app?modo=${signingUp ? 'registro' : 'login'}`);
+  history.replaceState(null, '', `/app?modo=${signingUp ? 'registro' : 'login'}${returnToAdmin ? '&next=admin' : ''}`);
   (signingUp ? byId('auth-name') : byId('auth-email')).focus();
 };
 
@@ -69,7 +70,7 @@ byId('auth-form').onsubmit = async (event) => {
       showAccessError(response.status === 429 ? 'Demasiados intentos. Espera un minuto y vuelve a intentarlo.' : authMessage(data));
       return;
     }
-    location.replace('/app');
+    location.replace(returnToAdmin ? '/admin' : '/app');
   } catch {
     showAccessError('No se pudo conectar con ThreadMap. Vuelve a intentarlo.');
   } finally {
@@ -84,6 +85,7 @@ export async function loadAccount() {
     if (!response.ok) throw new Error('No se pudo comprobar tu sesión.');
     const { user } = await response.json();
     if (user) {
+      if (returnToAdmin) { location.replace('/admin'); return new Promise(() => {}); }
       if (location.search) history.replaceState(null, '', '/app');
       const usageResponse = await fetch('/api/usage');
       if (!usageResponse.ok) throw new Error('No se pudo comprobar tu cupo de mensajes. Recarga para continuar.');
@@ -94,6 +96,7 @@ export async function loadAccount() {
       byId('account-name').textContent = user.name;
       byId('account-name').title = user.email;
       byId('account-avatar').textContent = user.name.slice(0, 1).toLocaleUpperCase('es');
+      byId('admin-open').hidden = !user.admin;
       byId('auth-screen').hidden = true;
       byId('workspace').hidden = false;
       return { user, usage, ...data };

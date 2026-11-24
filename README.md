@@ -13,7 +13,7 @@ Abre la [portada de ThreadMap](http://127.0.0.1:3000) para ver la demo o entra d
 
 ## Cuentas e historial
 
-El registro utiliza nombre, correo y contraseña de al menos ocho caracteres. El botón del ojo permite mostrar u ocultar la contraseña tanto al entrar como al registrarse. Esta versión de demo no envía correos de confirmación ni ofrece recuperación de contraseña por email. Better Auth gestiona los hashes de contraseña y las sesiones con cookies HttpOnly y SameSite. Las sesiones duran hasta siete días; cerrar sesión las invalida en el servidor.
+El registro utiliza nombre, correo y contraseña de al menos ocho caracteres. El botón del ojo permite mostrar u ocultar la contraseña tanto al entrar como al registrarse. Esta versión de demo no envía correos de confirmación; la recuperación se hace con enlaces privados generados por el administrador. Better Auth gestiona los hashes de contraseña y las sesiones con cookies HttpOnly y SameSite. Las sesiones duran hasta siete días; cerrar sesión las invalida en el servidor.
 
 El primer inicio crea automáticamente `data/threadmap.sqlite` y `data/session-secret`. Las cuentas, sesiones y árboles de conversación se guardan en SQLite; el historial queda separado por usuario. Ambos archivos son privados y están excluidos de Git. Para conservarlos, respalda el directorio `data` con el servidor detenido. No elimines el secreto de sesión si quieres mantener las sesiones entre reinicios.
 
@@ -35,7 +35,7 @@ En **Conversaciones**, pasa el cursor sobre un chat para mostrar la papelera; ta
 
 En **Configuración**, elige el **Proveedor** y el **Modo de conexión**. La selección inicial es **Gemini → Clave de la plataforma**; se respeta una elección anterior del navegador.
 
-Cada cuenta tiene **5 mensajes gratuitos en total**, compartidos entre proveedores, conversaciones, ramas y chats temporales. El cupo se guarda en SQLite y no se reinicia al cerrar sesión, borrar conversaciones o reiniciar el servidor. Se reserva de forma atómica antes de llamar al proveedor y se devuelve si la solicitud falla. Al agotarlo, la interfaz solicita una API key personal; el servidor también bloquea cualquier intento de seguir usando la clave de plataforma. Las claves personales no consumen ese cupo. Al actualizar una base existente, las cuentas reciben el nuevo cupo de cinco; no se estima el uso anterior a partir del historial editable.
+Cada cuenta empieza con **5 mensajes gratuitos en total**, compartidos entre proveedores, conversaciones, ramas y chats temporales. El administrador puede añadir mensajes a una cuenta desde su panel. El cupo se guarda en SQLite y no se reinicia al cerrar sesión, borrar conversaciones o reiniciar el servidor. Se reserva de forma atómica antes de llamar al proveedor y se devuelve si la solicitud falla. Al agotarlo, la interfaz solicita una API key personal o más mensajes al administrador; el servidor también bloquea cualquier intento de seguir usando la clave de plataforma. Las claves personales no consumen ese cupo. Al actualizar una base existente se preserva el uso; las ampliaciones del cupo se suman al límite actual.
 
 - **Clave de la plataforma.** Crea `.env` a partir de `.env.example` si aún no existe. Configura `OPENAI_API_KEY` para OpenAI, `GEMINI_API_KEY` para Gemini, o ambas. Reinicia el servidor y elige **Clave de la plataforma**. Las claves se usan en el servidor y la interfaz solo recibe su estado de disponibilidad.
 - **Clave personal.** Selecciona **Mi propia clave**, pega una clave del proveedor seleccionado y guarda. Para Gemini, puedes crearla en [Google AI Studio](https://aistudio.google.com/apikey). La clave queda en memoria hasta que recargues, cierres la página o guardes otra conexión.
@@ -70,6 +70,20 @@ Las respuestas renderizan fórmulas con KaTeX: `$…$` y `\(…\)` en línea, `$
 ## Chat temporal
 
 En una conversación nueva, activa **Chat temporal** antes de enviar el primer mensaje. La conversación y sus ramas se mantienen en memoria mientras estés en ese chat y se descartan al navegar a otro o recargar. Al solicitar una respuesta, el proveedor de IA seleccionado recibe el contexto de la rama.
+
+## Administración privada
+
+El panel `/admin` está limitado a **josiasquispe999@gmail.com**, verificado en el servidor en cada operación. Inicia sesión con esa cuenta y abre **Administración** en el menú lateral. No se crea ninguna cuenta ni contraseña administrativa predeterminada.
+
+La primera activación requiere un código de un solo uso, la contraseña actual de esa cuenta y una segunda contraseña administrativa de 12 a 128 caracteres, distinta de la principal. El código se genera al iniciar el servidor: `data/admin-setup-code` en local, o `/var/lib/threadmap/admin-setup-code` en el despliegue estándar. En EC2 puedes leerlo por SSH con `sudo cat /var/lib/threadmap/admin-setup-code`. Esta comprobación evita que el registro abierto y sin verificación de correo permita apropiarse del panel. Tras activarlo, la propiedad queda vinculada al ID de la cuenta; el código se elimina.
+
+La segunda contraseña se pide cada vez que entras al panel. El permiso temporal solo se guarda en memoria del navegador, está vinculado a tu sesión normal y caduca a los 15 minutos. **Bloquear**, salir de la página, cerrar la sesión principal o cambiar la contraseña administrativa invalida el acceso correspondiente. Los intentos de desbloqueo se limitan en SQLite a cinco cada 15 minutos. Para cambiar la contraseña desde dentro se requiere la actual y se invalidan todos los permisos administrativos.
+
+El panel muestra nombres, correos, registros, accesos, último acceso, mensajes usados y cupos. Se contabilizan los accesos desde esta actualización (el registro con sesión cuenta como el primero); para cuentas anteriores solo se recuperan las sesiones que todavía existen. No se presentan cifras históricas inexistentes como si fueran completas.
+
+Las contraseñas de cuentas y del panel son hashes: no se muestran ni se pueden recuperar en texto. Para ayudar a una persona, genera **Crear enlace**, cópialo y compártelo por un medio privado. Dura 15 minutos, solo se usa una vez y otro enlace para la misma persona invalida el anterior. La persona elige su nueva contraseña en `/restablecer`; el cambio revoca sus sesiones anteriores y conserva conversaciones y cupo. No se envían correos automáticamente. Los enlaces usan un fragmento y se retiran de la barra de direcciones al abrirlos, para evitar poner el token en consultas o registros HTTP.
+
+**Añadir mensajes** incrementa el cupo de esa persona, sin borrar su consumo. Los cambios y enlaces generados quedan registrados en la actividad administrativa. La base, el código de activación y los secretos están excluidos de Git. Las copias de la base contienen datos privados y deben mantenerse bajo el mismo control de acceso.
 
 ## Pruebas
 

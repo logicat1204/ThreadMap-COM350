@@ -34,7 +34,7 @@ if tar -tzf "$archive" | grep -Eq '(^/|(^|/)\.\.(/|$))'; then
   echo 'El paquete contiene rutas no permitidas.'; exit 1
 fi
 tar --no-same-owner --no-same-permissions -xzf "$archive" -C "$release"
-for required in package.json package-lock.json server.js accounts.js runtime.js public/index.html; do
+for required in package.json package-lock.json server.js accounts.js administration.js runtime.js public/index.html; do
   [[ -f "$release/$required" ]] || { echo "Falta $required en el paquete."; exit 1; }
 done
 chown -R threadmap:threadmap "$release"

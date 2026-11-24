@@ -16,6 +16,7 @@ node_modules/
 *.db
 *.db-*
 session-secret
+admin-setup-code
 
 # Generated previews, test results and logs
 /outputs/

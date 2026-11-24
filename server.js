@@ -8,6 +8,11 @@ import { appOrigin, allowsHost, allowsOrigin, clientAddress } from './runtime.js
 const assets = {
   '/': ['landing.html', 'text/html; charset=utf-8'],
   '/app': ['index.html', 'text/html; charset=utf-8'],
+  '/admin': ['admin.html', 'text/html; charset=utf-8'],
+  '/admin.js': ['admin.js', 'text/javascript; charset=utf-8'],
+  '/admin.css': ['admin.css', 'text/css; charset=utf-8'],
+  '/restablecer': ['reset.html', 'text/html; charset=utf-8'],
+  '/reset.js': ['reset.js', 'text/javascript; charset=utf-8'],
   '/landing.css': ['landing.css', 'text/css; charset=utf-8'],
   '/landing.js': ['landing.js', 'text/javascript; charset=utf-8'],
   '/appearance.js': ['appearance.js', 'text/javascript; charset=utf-8'],
@@ -167,7 +172,7 @@ export function createThreadMapServer({
           (path === '/' || (path === '/app' && url.searchParams.has('modo')))) {
         const session = await (await getAccounts()).getSession(request);
         if (session) {
-          response.writeHead(302, { ...securityHeaders, Location: '/app', Vary: 'Cookie' });
+          response.writeHead(302, { ...securityHeaders, Location: url.searchParams.get('next') === 'admin' ? '/admin' : '/app', Vary: 'Cookie' });
           return response.end();
         }
       }
@@ -178,6 +183,7 @@ export function createThreadMapServer({
         if (request.headers['sec-fetch-site'] === 'cross-site') throw new RequestError(403, 'Origen no permitido.');
       }
       if (path.startsWith('/api/auth/')) {
+        if (path === '/api/auth/request-password-reset') throw new RequestError(403, 'Solicita un enlace de recuperación al administrador de la demo.');
         // Never trust a client-provided IP header for authentication rate limits.
         request.headers['x-threadmap-ip'] = clientAddress(request, trustProxy);
         if (!['GET', 'HEAD'].includes(request.method)) request.body = await readJSON(request, 16_384);
@@ -192,9 +198,37 @@ export function createThreadMapServer({
       }
       if (request.method === 'GET' && path === '/health') return sendJSON(response, 200, { status: 'ok' });
       if (request.method === 'GET' && path === '/api/me') {
-        const session = await (await getAccounts()).getSession(request);
-        const user = session ? { id: session.user.id, name: session.user.name, email: session.user.email } : null;
+        const store = await getAccounts();
+        const session = await store.getSession(request);
+        const user = session ? { id: session.user.id, name: session.user.name, email: session.user.email, admin: Boolean(store.administration?.eligible(session.user)) } : null;
         return sendJSON(response, 200, { user });
+      }
+      if (path === '/admin' && ['GET', 'HEAD'].includes(request.method)) {
+        const session = await (await getAccounts()).getSession(request);
+        if (!session) {
+          response.writeHead(302, { ...securityHeaders, Location: '/app?modo=login&next=admin' });
+          return response.end();
+        }
+      }
+      if (path.startsWith('/api/admin/')) {
+        const store = await getAccounts();
+        const session = await store.getSession(request);
+        if (!session) throw new RequestError(401, 'Inicia sesión para continuar.');
+        const admin = store.administration;
+        admin.status(session);
+        const token = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(request.headers.authorization ?? '')?.[1];
+        if (request.method === 'GET' && path === '/api/admin/status') return sendJSON(response, 200, admin.status(session));
+        if (request.method === 'GET' && path === '/api/admin/users') return sendJSON(response, 200, admin.users(session, token));
+        if (request.method !== 'POST') throw new RequestError(405, 'Método no permitido.');
+        const actions = { setup: 'setup', unlock: 'unlock', lock: 'lock', grant: 'grant', 'reset-link': 'resetLink', password: 'changePassword' };
+        const name = path.slice('/api/admin/'.length);
+        if (!Object.hasOwn(actions, name)) throw new RequestError(404, 'Acción no encontrada.');
+        const action = actions[name];
+        if (!['setup', 'unlock', 'lock'].includes(action)) admin.authorize(session, token);
+        const body = await readJSON(request, 4096);
+        const result = action === 'setup' || action === 'unlock' ? await admin[action](session, body)
+          : action === 'lock' ? admin.lock(session, token) : await admin[action](session, token, body);
+        return sendJSON(response, 200, result ?? { status: 'ok' });
       }
       let user;
       if (path === '/api/workspace' || path === '/api/chat' || path === '/api/usage') {
@@ -242,9 +276,10 @@ export function createThreadMapServer({
         response.once('close', () => cancellation.abort());
         const store = await getAccounts();
         if (mode === 'platform' && !store.reserveMessage(user.id)) {
+          const usage = store.getUsage(user.id);
           return sendJSON(response, 403, {
-            error: 'Usaste tus 5 mensajes gratuitos. Añade tu propia API key en Configuración para continuar.',
-            code: 'FREE_MESSAGES_EXHAUSTED', usage: store.getUsage(user.id),
+            error: `Agotaste tus ${usage.limit} mensajes de plataforma. Añade tu API key o solicita más mensajes al administrador.`,
+            code: 'FREE_MESSAGES_EXHAUSTED', usage,
           });
         }
         let completed = false;

@@ -8,7 +8,7 @@ Los archivos de esta carpeta y `.github/workflows` deben estar en `main` antes d
 
 ```powershell
 git status
-git add .gitattributes .env.example README.md runtime.js server.js accounts.js deploy .github/workflows test/production.test.js
+git add .gitattributes .env.example README.md runtime.js server.js accounts.js administration.js public deploy .github/workflows test
 git commit -m "Prepare Ubuntu EC2 deployment and CI/CD"
 git push origin main
 ```
@@ -76,7 +76,7 @@ Empaqueta el código del commit que acabas de clonar y despliega:
 ```bash
 cd ~/threadmap-setup
 git archive --format=tar.gz --output /tmp/threadmap-release.tar.gz HEAD \
-  package.json package-lock.json server.js accounts.js runtime.js public
+  package.json package-lock.json server.js accounts.js administration.js runtime.js public
 sudo /usr/local/sbin/threadmap-deploy /tmp/threadmap-release.tar.gz "$(git rev-parse HEAD)"
 ```
 
@@ -105,11 +105,23 @@ Para esta demo puedes terminar aquí la configuración de infraestructura. No ne
 cd ~/threadmap-setup &&
 git pull --ff-only origin main &&
 git archive --format=tar.gz --output /tmp/threadmap-release.tar.gz HEAD \
-  package.json package-lock.json server.js accounts.js runtime.js public &&
+  package.json package-lock.json server.js accounts.js administration.js runtime.js public &&
 sudo /usr/local/sbin/threadmap-deploy /tmp/threadmap-release.tar.gz "$(git rev-parse HEAD)"
 ```
 
 El script instala las dependencias, respalda SQLite y reinicia el servicio con la nueva versión. Las fuentes matemáticas y bibliotecas de formato están dentro de `public/vendor` y viajan en el paquete. El cupo de cinco mensajes se conserva en la base de datos. Evita modificar el código directamente en EC2 para reducir conflictos al hacer pull.
+
+## Administración: primera activación
+
+El paquete incluye ahora `administration.js`: utiliza el comando de empaquetado actualizado de esta guía. No reemplaces la base ni el secreto de sesión al actualizar.
+
+Después de desplegar, inicia sesión con `josiasquispe999@gmail.com` y abre `https://TU_SUBDOMINIO.duckdns.org/admin`. Obtén el código de activación por SSH:
+
+```bash
+sudo cat /var/lib/threadmap/admin-setup-code
+```
+
+Introduce ese código, la contraseña actual de tu cuenta y una contraseña administrativa distinta (mínimo 12 caracteres). Tú eliges ambas contraseñas; el despliegue no crea ninguna predeterminada. El código se elimina al activar el panel. En visitas siguientes se pedirá la segunda contraseña; no hace falta repetir el código. El panel permite añadir mensajes y crear enlaces privados para restablecer contraseñas, sin consultar los hashes ni las claves de IA.
 
 ## 6. Opcional: preparar AWS para CI/CD
 

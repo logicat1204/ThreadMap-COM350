@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow"><title>Administración · ThreadMap</title>
+  <link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/admin.css">
+  <script type="module" src="/appearance.js"></script><script type="module" src="/admin.js"></script>
+</head>
+<body class="admin-page">
+  <header class="admin-header"><a href="/app" class="brand">Thread<span>Map</span></a><a href="/app" class="text-button">Volver al chat</a></header>
+  <main class="admin-main">
+    <div class="admin-title"><div><p class="admin-eyebrow">ESPACIO PRIVADO</p><h1>Administración</h1><p>Accesos, cuentas y mensajes de la demo.</p></div><button id="admin-lock" class="secondary-button" hidden>Bloquear</button></div>
+    <p id="admin-error" class="admin-error" role="alert" hidden></p><p id="admin-notice" role="status"></p>
+    <section id="admin-gate" class="admin-card admin-gate" hidden>
+      <h2 id="gate-title">Desbloquear administración</h2><p id="gate-description">Introduce tu contraseña administrativa. Es distinta de la de tu cuenta.</p>
+      <form id="admin-gate-form" class="admin-form">
+        <div id="admin-setup-fields" hidden>
+          <label for="setup-code">Código de activación del servidor</label><input id="setup-code" autocomplete="off" maxlength="128" spellcheck="false">
+          <details><summary>¿Dónde encuentro el código?</summary><p>Conéctate por SSH a tu EC2 y ejecuta:</p><code>sudo cat /var/lib/threadmap/admin-setup-code</code><p>En local está en <code>data/admin-setup-code</code>. El código se consume una sola vez y no se envía por correo.</p></details>
+          <label for="login-password">Contraseña de tu cuenta</label><div class="password-entry"><input id="login-password" type="password" autocomplete="current-password" maxlength="128"><button type="button" class="icon-button" data-reveal="login-password" aria-label="Mostrar contraseña" aria-pressed="false" data-icon="eye"></button></div>
+        </div>
+        <label id="gate-password-label" for="gate-password">Contraseña administrativa</label><div class="password-entry"><input id="gate-password" type="password" autocomplete="current-password" maxlength="128" required><button type="button" class="icon-button" data-reveal="gate-password" aria-label="Mostrar contraseña" aria-pressed="false" data-icon="eye"></button></div>
+        <div id="gate-confirm-field" hidden><label for="gate-confirm">Repite la contraseña administrativa</label><div class="password-entry"><input id="gate-confirm" type="password" autocomplete="new-password" maxlength="128"><button type="button" class="icon-button" data-reveal="gate-confirm" aria-label="Mostrar contraseña" aria-pressed="false" data-icon="eye"></button></div></div>
+        <button class="primary-button" id="gate-submit" type="submit">Desbloquear</button>
+      </form>
+      <p class="admin-muted">Se te pedirá al entrar de nuevo. El panel se bloquea automáticamente después de 15 minutos.</p>
+    </section>
+    <section id="admin-dashboard" hidden>
+      <div id="admin-stats" class="admin-stats"></div>
+      <section class="admin-card">
+        <div class="admin-section-heading"><div><h2>Cuentas de la demo</h2><p>El cupo es el total de mensajes que pueden usar la clave de plataforma.</p></div><button id="admin-refresh" class="secondary-button">Actualizar</button></div>
+        <label class="admin-search-label" for="user-search">Buscar por nombre o correo</label><input id="user-search" type="search" placeholder="Buscar una cuenta…" maxlength="254" autocomplete="off">
+        <p id="metrics-note" class="admin-muted"></p>
+        <div class="admin-table-scroll"><table><thead><tr><th>Persona</th><th>Accesos</th><th>Mensajes de plataforma</th><th>Añadir mensajes</th><th>Recuperación</th></tr></thead><tbody id="admin-users"></tbody></table></div>
+        <p class="admin-muted">Las contraseñas no son visibles. Genera un enlace temporal para que la persona elija una nueva. Los mensajes adicionales se suman al cupo existente.</p>
+      </section>
+      <section class="admin-card admin-password-card"><h2>Cambiar contraseña administrativa</h2><form id="admin-password-form" class="admin-form">
+        <label for="current-admin-password">Contraseña administrativa actual</label><div class="password-entry"><input id="current-admin-password" type="password" autocomplete="current-password" maxlength="128" required><button type="button" class="icon-button" data-reveal="current-admin-password" aria-label="Mostrar contraseña" aria-pressed="false" data-icon="eye"></button></div>
+        <label for="new-admin-password">Nueva contraseña administrativa</label><div class="password-entry"><input id="new-admin-password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required><button type="button" class="icon-button" data-reveal="new-admin-password" aria-label="Mostrar contraseña" aria-pressed="false" data-icon="eye"></button></div>
+        <label for="confirm-admin-password">Repite la nueva contraseña</label><input id="confirm-admin-password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+        <button class="primary-button" type="submit">Cambiar y bloquear</button>
+      </form></section>
+      <section class="admin-card"><h2>Actividad administrativa</h2><ul id="admin-audit" class="admin-audit"></ul></section>
+    </section>
+  </main>
+  <dialog id="reset-link-dialog" class="admin-reset-dialog" aria-labelledby="reset-link-title"><h2 id="reset-link-title">Enlace de recuperación</h2><p id="reset-link-recipient"></p><label for="reset-link-value">Enlace privado</label><input id="reset-link-value" type="text" readonly autocomplete="off"><p>Caduca en 15 minutos y solo puede usarse una vez. Compártelo por un medio privado. Al cambiar la contraseña, se cerrarán las sesiones de esa cuenta.</p><div class="admin-dialog-actions"><button id="reset-link-copy" class="primary-button">Copiar enlace</button><button id="reset-link-close" class="secondary-button">Cerrar</button></div><p id="reset-link-status" role="status"></p></dialog>
+</body>
+</html>

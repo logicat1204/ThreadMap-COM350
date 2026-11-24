@@ -245,6 +245,7 @@ h1, h2, h3, p { margin: 0; }
 .utility { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; border-radius: 8px; background: transparent; text-align: left; font-weight: 550; color: var(--text); padding: 9px 9px; font-size: 12.5px; }
 .utility svg { width: 17px; height: 17px; color: var(--muted); }
 .utility:hover { background: var(--hover); }
+.admin-link { text-decoration: none; }
 .workspace-account { display: flex; align-items: center; gap: 10px; margin: 10px 2px 0; padding: 12px 5px 2px; border-top: 1px solid var(--line); }
 .account-avatar { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--accent-wash); color: var(--accent); border: 1px solid var(--accent-line); }
 .account-avatar svg { width: 17px; height: 17px; }
