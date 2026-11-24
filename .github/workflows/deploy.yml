@@ -1,0 +1,88 @@
+name: Test and deploy ThreadMap
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - run: npm ci
+      - run: npm test
+      - name: Check deployment scripts
+        run: |
+          bash -n deploy/bootstrap-ubuntu.sh
+          bash -n deploy/release.sh
+          shellcheck deploy/bootstrap-ubuntu.sh deploy/release.sh
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    concurrency:
+      group: threadmap-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      DEPLOY_BUCKET: ${{ vars.DEPLOY_BUCKET }}
+      EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+      AWS_PAGER: ''
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: ThreadMap-${{ github.run_id }}
+      - name: Package the tested source
+        run: |
+          git archive --format=tar.gz --output threadmap.tar.gz HEAD \
+            package.json package-lock.json server.js accounts.js runtime.js public
+      - name: Upload and deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact="s3://${DEPLOY_BUCKET}/releases/${GITHUB_SHA}.tar.gz"
+          aws s3 cp threadmap.tar.gz "$artifact" --only-show-errors
+          jq -n --arg command "/usr/local/sbin/threadmap-deploy $artifact $GITHUB_SHA" \
+            '{commands:[$command],executionTimeout:["900"]}' > parameters.json
+          command_id=$(aws ssm send-command --document-name AWS-RunShellScript \
+            --instance-ids "$EC2_INSTANCE_ID" --parameters file://parameters.json \
+            --comment "ThreadMap $GITHUB_SHA" --query Command.CommandId --output text)
+          for attempt in $(seq 1 180); do
+            status=$(aws ssm get-command-invocation --command-id "$command_id" \
+              --instance-id "$EC2_INSTANCE_ID" --query Status --output text 2>/dev/null || true)
+            case "$status" in
+              Success)
+                aws ssm get-command-invocation --command-id "$command_id" \
+                  --instance-id "$EC2_INSTANCE_ID" --query StandardOutputContent --output text
+                exit 0 ;;
+              Failed|TimedOut|Cancelled|Cancelling)
+                aws ssm get-command-invocation --command-id "$command_id" --instance-id "$EC2_INSTANCE_ID"
+                exit 1 ;;
+            esac
+            sleep 5
+          done
+          echo 'El despliegue no confirmó su resultado a tiempo. Revisa Run Command en AWS.'
+          exit 1

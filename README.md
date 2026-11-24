@@ -17,7 +17,13 @@ El registro utiliza nombre, correo y contraseña de al menos ocho caracteres. Es
 
 El primer inicio crea automáticamente `data/threadmap.sqlite` y `data/session-secret`. Las cuentas, sesiones y árboles de conversación se guardan en SQLite; el historial queda separado por usuario. Ambos archivos son privados y están excluidos de Git. Para conservarlos, respalda el directorio `data` con el servidor detenido. No elimines el secreto de sesión si quieres mantener las sesiones entre reinicios.
 
-Puedes ajustar `DATABASE_PATH`, `APP_URL` y `BETTER_AUTH_SECRET` en `.env`. En local, `APP_URL` se calcula a partir de `PORT` si no se configura. Si especificas un secreto propio, debe tener al menos 32 caracteres. El servidor continúa restringido a conexiones locales; el despliegue público y su proxy HTTPS se configurarán por separado.
+Puedes ajustar `DATABASE_PATH`, `APP_URL` y `BETTER_AUTH_SECRET` en `.env`. En local, `APP_URL` se calcula a partir de `PORT` si no se configura. Si especificas un secreto propio, debe tener al menos 32 caracteres. Node escucha en `127.0.0.1`; si configuras un `APP_URL` público, acepta ese host además de los locales para servirlo detrás del proxy HTTPS. En producción, `APP_URL` HTTPS y un `BETTER_AUTH_SECRET` permanente son obligatorios.
+
+## Despliegue en EC2
+
+Sigue [la guía de Ubuntu 26.04 y CI/CD](deploy/README.md) para publicar la instancia `threadmap`, con SSH para administración, Caddy para HTTPS y GitHub Actions con OIDC/SSM para actualizar el código. El instalador y el script de versiones conservan cuentas e historial fuera del código. El workflow no despliega hasta configurar `DEPLOY_ENABLED=true`.
+
+`TRUST_PROXY=loopback` permite usar la IP que el Caddy local sobrescribe en `X-ThreadMap-Client-IP`; cabeceras de otros pares no se consideran confiables. `AUTH_SIGNIN_RATE_LIMIT` y `AUTH_SIGNUP_RATE_LIMIT` configuran intentos por minuto e IP (8 y 5 por defecto, 30 y 20 en la plantilla de producción). `GET /health` permite comprobar que el proceso está disponible.
 
 Cada vez que abres la aplicación empiezas en un chat vacío. Los chats vacíos y los borradores no aparecen en **Conversaciones** ni se guardan en SQLite: se incorporan al enviar el primer mensaje. Si tu navegador conserva conversaciones de la versión anterior, aparece **Importar historial local**: solo se copian a la cuenta con la que confirmes la importación y el original permanece en el navegador.
 

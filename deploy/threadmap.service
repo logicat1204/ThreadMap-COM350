@@ -1,0 +1,23 @@
+[Unit]
+Description=ThreadMap
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=threadmap
+Group=threadmap
+WorkingDirectory=/opt/threadmap/current
+EnvironmentFile=/etc/threadmap/threadmap.env
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/threadmap
+
+[Install]
+WantedBy=multi-user.target

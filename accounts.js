@@ -5,6 +5,7 @@ import Database from 'better-sqlite3';
 import { randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { appOrigin } from './runtime.js';
 
 export class AccountError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -71,6 +72,8 @@ export async function createAccounts({
   baseURL = process.env.APP_URL || `http://127.0.0.1:${process.env.PORT || 3000}`,
   secret = process.env.BETTER_AUTH_SECRET,
 } = {}) {
+  appOrigin(baseURL);
+  if (process.env.NODE_ENV === 'production' && !secret) throw new Error('Configura un BETTER_AUTH_SECRET permanente en producción.');
   mkdirSync(dirname(resolve(databasePath)), { recursive: true });
   secret ||= localSecret(dirname(resolve(databasePath)));
   if (secret.length < 32) throw new Error('BETTER_AUTH_SECRET debe tener al menos 32 caracteres.');
@@ -89,7 +92,10 @@ export async function createAccounts({
       emailAndPassword: { enabled: true, requireEmailVerification: false, minPasswordLength: 8, maxPasswordLength: 128 },
       session: { expiresIn: 60 * 60 * 24 * 7, updateAge: 60 * 60 * 24, cookieCache: { enabled: false } },
       rateLimit: { enabled: true, storage: 'database', window: 60, max: 60,
-        customRules: { '/sign-in/email': { window: 60, max: 8 }, '/sign-up/email': { window: 60, max: 5 } } },
+        customRules: {
+          '/sign-in/email': { window: 60, max: positiveLimit('AUTH_SIGNIN_RATE_LIMIT', 8) },
+          '/sign-up/email': { window: 60, max: positiveLimit('AUTH_SIGNUP_RATE_LIMIT', 5) },
+        } },
       advanced: { ipAddress: { ipAddressHeaders: ['x-threadmap-ip'] }, useSecureCookies: origin.protocol === 'https:' },
     });
     await (await getMigrations(auth.options)).runMigrations();
@@ -124,4 +130,10 @@ export async function createAccounts({
       close() { db.close(); },
     };
   } catch (error) { db.close(); throw error; }
+}
+
+function positiveLimit(name, fallback) {
+  const value = process.env[name] ? Number(process.env[name]) : fallback;
+  if (!Number.isInteger(value) || value < 1 || value > 1000) throw new Error(`${name} debe ser un entero entre 1 y 1000.`);
+  return value;
 }

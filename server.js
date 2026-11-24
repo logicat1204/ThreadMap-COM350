@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { createAccounts } from './accounts.js';
+import { appOrigin, allowsHost, allowsOrigin, clientAddress } from './runtime.js';
 
 const assets = {
   '/': ['index.html', 'text/html; charset=utf-8'],
@@ -137,7 +138,10 @@ export function createThreadMapServer({
   geminiModel = process.env.GEMINI_MODEL?.trim() || 'gemini-3.1-flash-lite',
   fetchProvider = fetch,
   accounts,
+  publicURL = process.env.APP_URL,
+  trustProxy = process.env.TRUST_PROXY === 'loopback',
 } = {}) {
+  const origin = appOrigin(publicURL);
   const providers = {
     openai: { name: 'OpenAI', platformKey, model },
     gemini: { name: 'Gemini', platformKey: geminiPlatformKey, model: geminiModel.replace(/^models\//, '') },
@@ -150,21 +154,19 @@ export function createThreadMapServer({
   const getAccounts = () => accountPromise ||= Promise.resolve(accounts || createAccounts());
   const server = createServer({ requestTimeout: 30_000 }, async (request, response) => {
     try {
-      // Accept loopback hosts only, including when the browser sends no Origin.
-      if (!/^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(request.headers.host ?? '')) {
-        throw new RequestError(403, 'Acceso local requerido.');
+      if (!allowsHost(request.headers.host, origin)) {
+        throw new RequestError(403, 'Servidor no permitido.');
       }
       const path = new URL(request.url, 'http://localhost').pathname;
       if (!['GET', 'HEAD'].includes(request.method)) {
-        const origin = request.headers.origin;
-        if (origin && origin !== `http://${request.headers.host}` && origin !== `https://${request.headers.host}`) {
+        if (!allowsOrigin(request.headers.origin, request.headers.host, origin)) {
           throw new RequestError(403, 'Origen no permitido.');
         }
         if (request.headers['sec-fetch-site'] === 'cross-site') throw new RequestError(403, 'Origen no permitido.');
       }
       if (path.startsWith('/api/auth/')) {
         // Never trust a client-provided IP header for authentication rate limits.
-        request.headers['x-threadmap-ip'] = request.socket?.remoteAddress || '127.0.0.1';
+        request.headers['x-threadmap-ip'] = clientAddress(request, trustProxy);
         if (!['GET', 'HEAD'].includes(request.method)) request.body = await readJSON(request, 16_384);
         if (path === '/api/auth/sign-up/email' && request.body) {
           if (typeof request.body.name !== 'string' || !request.body.name.trim() || request.body.name.length > 80) {
@@ -175,6 +177,7 @@ export function createThreadMapServer({
         for (const [name, value] of Object.entries(securityHeaders)) response.setHeader(name, value);
         return await (await getAccounts()).authHandler(request, response);
       }
+      if (request.method === 'GET' && path === '/health') return sendJSON(response, 200, { status: 'ok' });
       if (request.method === 'GET' && path === '/api/me') {
         const session = await (await getAccounts()).getSession(request);
         const user = session ? { id: session.user.id, name: session.user.name, email: session.user.email } : null;
@@ -266,6 +269,7 @@ export function createThreadMapServer({
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  appOrigin();
   const port = Number(process.env.PORT || 3000);
   const accounts = await createAccounts();
   createThreadMapServer({ accounts }).listen(port, '127.0.0.1', () => {

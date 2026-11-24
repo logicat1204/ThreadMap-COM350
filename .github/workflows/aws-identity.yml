@@ -1,0 +1,28 @@
+name: Show AWS OIDC identity
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  identity:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Show only the subject and audience (never the token)
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os, urllib.request, json, base64
+          url = os.environ['ACTIONS_ID_TOKEN_REQUEST_URL'] + '&audience=sts.amazonaws.com'
+          headers = {'Authorization': 'Bearer ' + os.environ['ACTIONS_ID_TOKEN_REQUEST_TOKEN']}
+          with urllib.request.urlopen(urllib.request.Request(url, headers=headers)) as response:
+              token = json.load(response)['value']
+          payload = token.split('.')[1]
+          claims = json.loads(base64.urlsafe_b64decode(payload + '=' * (-len(payload) % 4)))
+          print('GITHUB_OIDC_SUB=' + claims['sub'])
+          print('AUDIENCE=' + str(claims['aud']))
+          PY
