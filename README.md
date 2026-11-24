@@ -9,7 +9,7 @@ npm ci
 npm start
 ```
 
-Abre [ThreadMap](http://127.0.0.1:3000), crea una cuenta y empieza una conversación. Para generar respuestas nuevas, conecta OpenAI o Gemini. Durante el desarrollo, `npm run dev` reinicia el servidor al editar sus módulos.
+Abre la [portada de ThreadMap](http://127.0.0.1:3000) para ver la demo o entra directamente a [la aplicación](http://127.0.0.1:3000/app). Crea una cuenta y conecta OpenAI o Gemini para generar respuestas. Durante el desarrollo, `npm run dev` reinicia el servidor al editar sus módulos.
 
 ## Cuentas e historial
 

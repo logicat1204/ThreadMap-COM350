@@ -243,6 +243,28 @@ export function revealResponse(body, scrollArea, onFinish) {
   requestAnimationFrame(paint);
 }
 
+export function renderBranchPreview(container, { question, excerpt, origin, answer }) {
+  const title = el('h3', 'branch-preview-question', question);
+  container.replaceChildren(title);
+
+  function section(label, content) {
+    const group = el('div', 'branch-preview-section');
+    group.append(el('h4', '', label), content);
+    container.append(group);
+  }
+
+  if (excerpt) section('Fragmento marcado', el('blockquote', '', excerpt));
+  if (origin) {
+    section('Rama de origen', el('p', '', origin.question));
+    const source = el('details', 'branch-preview-source');
+    const label = origin.role === 'assistant' ? 'Ver respuesta de origen' : 'Ver pregunta de origen';
+    source.append(el('summary', '', label), responseText(origin.content));
+    container.append(source);
+  }
+  section('Respuesta', answer ? responseText(answer) : el('p', 'branch-preview-empty', 'Aún no hay una respuesta.'));
+  return title;
+}
+
 function createBranchPreview(stage, popup) {
   const panel = popup.parentElement;
   let anchor = null;
@@ -291,29 +313,14 @@ function createBranchPreview(stage, popup) {
     popup.style.top = `${y - panelBox.top - panel.clientTop}px`;
   }
 
-  function section(label, content) {
-    const group = el('div', 'branch-preview-section');
-    group.append(el('h4', '', label), content);
-    return group;
-  }
-
-  function show(button, { question, excerpt, origin, answer }) {
+  function show(button, preview) {
     clearTimeout(closeTimer);
     if (anchor === button && !popup.hidden) return;
     anchor?.removeAttribute('aria-details');
     anchor = button;
     anchor.setAttribute('aria-details', popup.id);
-    const title = el('h3', 'branch-preview-question', question);
+    const title = renderBranchPreview(popup, preview);
     title.id = 'branch-preview-title';
-    popup.replaceChildren(title);
-    if (excerpt) popup.append(section('Fragmento marcado', el('blockquote', '', excerpt)));
-    if (origin) {
-      const source = el('details', 'branch-preview-source');
-      const label = origin.role === 'assistant' ? 'Ver respuesta de origen' : 'Ver pregunta de origen';
-      source.append(el('summary', '', label), responseText(origin.content));
-      popup.append(section('Rama de origen', el('p', '', origin.question)), source);
-    }
-    popup.append(section('Respuesta', answer ? responseText(answer) : el('p', 'branch-preview-empty', 'Aún no hay una respuesta.')));
     popup.hidden = false;
     popup.scrollTop = 0;
     position(button);

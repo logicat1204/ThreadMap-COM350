@@ -1,7 +1,7 @@
 import { setIcon } from './view.js';
 
 const byId = (id) => document.getElementById(id);
-let signingUp = false;
+let signingUp = new URLSearchParams(location.search).get('modo') === 'registro';
 
 function setPasswordVisibility(visible) {
   byId('auth-password').type = visible ? 'text' : 'password';
@@ -30,8 +30,7 @@ function showAccessError(message) {
   byId('auth-error').hidden = false;
 }
 
-byId('auth-switch').onclick = () => {
-  signingUp = !signingUp;
+function renderAuthMode() {
   setPasswordVisibility(false);
   byId('auth-title').textContent = signingUp ? 'Tu próxima idea empieza aquí' : 'Bienvenido de nuevo';
   byId('auth-description').textContent = signingUp ? 'Crea tu cuenta y explora tus propias conversaciones.' : 'Inicia sesión para continuar tus conversaciones.';
@@ -42,6 +41,13 @@ byId('auth-switch').onclick = () => {
   byId('auth-switch-label').textContent = signingUp ? '¿Ya tienes una cuenta?' : '¿Primera vez aquí?';
   byId('auth-switch').textContent = signingUp ? 'Iniciar sesión' : 'Crear una cuenta';
   byId('auth-error').hidden = true;
+}
+
+renderAuthMode();
+byId('auth-switch').onclick = () => {
+  signingUp = !signingUp;
+  renderAuthMode();
+  history.replaceState(null, '', `/app?modo=${signingUp ? 'registro' : 'login'}`);
   (signingUp ? byId('auth-name') : byId('auth-email')).focus();
 };
 
@@ -63,7 +69,7 @@ byId('auth-form').onsubmit = async (event) => {
       showAccessError(response.status === 429 ? 'Demasiados intentos. Espera un minuto y vuelve a intentarlo.' : authMessage(data));
       return;
     }
-    location.reload();
+    location.replace('/app');
   } catch {
     showAccessError('No se pudo conectar con ThreadMap. Vuelve a intentarlo.');
   } finally {
@@ -103,5 +109,5 @@ export async function loadAccount() {
 export async function signOut() {
   const response = await fetch('/api/auth/sign-out', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
   if (!response.ok) throw new Error('No se pudo cerrar la sesión. Inténtalo de nuevo.');
-  location.reload();
+  location.replace('/app?modo=login');
 }

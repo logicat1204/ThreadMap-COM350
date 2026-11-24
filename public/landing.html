@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Explora conversaciones con IA en un mapa de ramas. Sigue una pregunta, conserva el contexto y vuelve a cualquier mensaje con ThreadMap.">
+  <title>ThreadMap · Conversaciones con IA en ramas</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2301605F'%3E%3Cpath d='M12 2.3C10.6 7.8 6.7 12 2 13c4.8.6 8.8 3.9 10 8.7 1.2-4.8 5.2-8.1 10-8.7-4.7-1-8.6-5.2-10-10.7Zm0 0v19.4' fill='none' stroke='%2301605F' stroke-width='1.2'/%3E%3Ccircle cx='12' cy='2.3' r='1.65'/%3E%3Ccircle cx='2' cy='13' r='1.25'/%3E%3Ccircle cx='22' cy='13' r='1.25'/%3E%3Ccircle cx='12' cy='15.3' r='1.25'/%3E%3Ccircle cx='12' cy='21.7' r='1.35'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/landing.css">
+  <link rel="stylesheet" href="/vendor/katex/katex.min.css">
+  <script type="module" src="/appearance.js"></script>
+  <script type="module" src="/landing.js"></script>
+</head>
+<body class="landing" id="inicio">
+  <header class="site-header">
+    <div class="site-nav page-width">
+      <a class="brand" href="/" aria-label="ThreadMap, inicio"><span class="brand-mark" data-icon="brand"></span>Thread<span>Map</span></a>
+      <nav class="site-sections" aria-label="Secciones">
+        <a href="#demo">Recorrido</a>
+        <a href="#funciones">Funciones</a>
+      </nav>
+      <div class="site-access">
+        <button class="icon-button site-theme" id="site-theme" type="button" data-icon="sun" aria-label="Modo claro" title="Modo claro" hidden></button>
+        <a class="site-login" href="/app?modo=login">Iniciar sesión</a>
+        <a class="site-button site-button-primary" href="/app?modo=registro">Crear cuenta</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="landing-hero page-width" aria-labelledby="hero-title">
+      <h1 id="hero-title">Sigue la pregunta <span>sin perder el hilo.</span></h1>
+      <p>Conversa con IA, abre una rama desde cualquier respuesta y vuelve a tus ideas en un mapa de conversación.</p>
+      <div class="hero-actions">
+        <a class="site-button site-button-primary" href="/app?modo=registro">Probar ThreadMap</a>
+        <a class="site-button site-button-outline" href="#demo">Ver la demo</a>
+      </div>
+    </section>
+
+    <section class="tour page-width" id="demo" aria-label="Recorrido por ThreadMap">
+      <div class="tour-layout">
+        <figure class="tour-board">
+          <div class="demo-screen" data-scene="chat" aria-hidden="true" inert>
+            <div class="demo-topbar">
+              <span class="demo-product"><span data-icon="brand"></span>Thread<strong>Map</strong></span>
+              <span class="demo-window-title">¿Cómo funciona HTTPS?</span>
+              <span class="demo-window-tools"><span data-icon="panel-left"></span><span data-icon="branch"></span></span>
+            </div>
+            <div class="demo-workspace">
+              <div class="demo-sidebar">
+                <span class="demo-sidebar-action"><span data-icon="plus"></span>Nueva conversación</span>
+                <span class="demo-sidebar-action"><span data-icon="search"></span>Buscar conversaciones</span>
+                <span class="demo-sidebar-label">Conversaciones</span>
+                <span class="demo-history-item is-selected"><span data-icon="chat"></span>¿Cómo funciona HTTPS?</span>
+                <span class="demo-history-item"><span data-icon="chat"></span>Modelo OSI</span>
+                <span class="demo-history-item"><span data-icon="chat"></span>Guía de Git</span>
+                <div class="demo-sidebar-end">
+                  <span class="demo-sidebar-action"><span data-icon="settings"></span>Configuración</span>
+                  <span class="demo-sidebar-action"><span data-icon="check"></span>Guardado</span>
+                </div>
+              </div>
+              <div class="demo-chat">
+                <div class="demo-chat-body">
+                  <div class="demo-turn demo-turn-root">
+                    <p class="demo-question">¿Cómo funciona HTTPS?</p>
+                    <div class="demo-answer">
+                      <p><strong>HTTPS</strong> protege la comunicación entre tu navegador y un servidor mediante TLS.</p>
+                      <ol>
+                        <li>El navegador verifica el <span class="demo-phrase">certificado digital<span class="demo-selection"><span data-icon="branch"></span>Ask about this</span></span> del sitio.</li>
+                        <li>El navegador y el servidor acuerdan claves de sesión.</li>
+                        <li>La conexión cifra los datos que ambos intercambian.</li>
+                      </ol>
+                      <div class="demo-message-tools"><span data-icon="copy"></span><span data-icon="branch"></span></div>
+                    </div>
+                  </div>
+                  <div class="demo-turn demo-turn-branch">
+                    <div class="demo-reference"><span data-icon="branch"></span><span>Rama de «¿Cómo funciona HTTPS?»<strong>certificado digital</strong></span></div>
+                    <p class="demo-question">¿Qué pasa si el certificado caduca?</p>
+                    <div class="demo-answer">
+                      <p>El navegador comprueba la fecha de validez del certificado. Si ya caducó, <strong>muestra una advertencia de seguridad</strong> y puede bloquear el acceso al sitio.</p>
+                      <div class="demo-message-tools"><span data-icon="copy"></span><span data-icon="branch"></span></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="demo-composer">
+                  <span class="demo-placeholder">Escribe una pregunta…</span>
+                  <span class="demo-draft">¿Qué pasa si el certificado caduca?</span>
+                  <span class="demo-send" data-icon="arrow-up"></span>
+                </div>
+              </div>
+              <div class="demo-map">
+                <div class="demo-map-heading"><span data-icon="branch"></span><strong>Mapa de conversación</strong><span data-icon="maximize"></span></div>
+                <div class="demo-graph">
+                  <svg viewBox="0 0 600 320" preserveAspectRatio="none" focusable="false">
+                    <path d="M183 160C201 160 201 104 219 104M381 104H417"/>
+                    <path class="demo-new-path" d="M183 160C201 160 201 216 219 216" pathLength="1"/>
+                  </svg>
+                  <span class="demo-node graph-root"><span data-icon="chat"></span>HTTPS</span>
+                  <span class="demo-node graph-tls"><span data-icon="branch"></span>¿Qué es TLS?</span>
+                  <span class="demo-node graph-encryption"><span data-icon="branch"></span>¿Qué se cifra?</span>
+                  <span class="demo-node graph-certificate demo-node-certificate"><span data-icon="branch"></span>¿Y si caduca?</span>
+                </div>
+                <div class="branch-preview demo-node-preview"></div>
+                <div class="demo-map-footer"><span data-icon="focus"></span><span data-icon="minus"></span><span>100 %</span><span data-icon="plus"></span></div>
+              </div>
+            </div>
+          </div>
+          <figcaption>Conversación de ejemplo</figcaption>
+        </figure>
+        <div class="tour-steps">
+          <section class="tour-step" data-scene="chat">
+            <span class="tour-icon" data-icon="chat" aria-hidden="true"></span>
+            <h2>Empieza con una pregunta</h2>
+            <p>Un chat sobre HTTPS es el punto de partida. Cada pregunta nueva puede llevarte por un camino distinto.</p>
+          </section>
+          <section class="tour-step" data-scene="selection">
+            <span class="tour-icon" data-icon="branch" aria-hidden="true"></span>
+            <h2>Elige qué quieres explorar</h2>
+            <p>Selecciona «certificado digital» y pulsa <em>Ask about this</em>. También puedes abrir una rama desde una respuesta completa.</p>
+          </section>
+          <section class="tour-step" data-scene="branch">
+            <span class="tour-icon" data-icon="network" aria-hidden="true"></span>
+            <h2>Continúa en una rama</h2>
+            <p>Pregunta qué pasa si el certificado caduca. La rama hereda el contexto hasta ese punto y aparece como un nodo en el mapa.</p>
+          </section>
+          <section class="tour-step" data-scene="preview">
+            <span class="tour-icon" data-icon="chat" aria-hidden="true"></span>
+            <h2>Consulta lo que se habló en un nodo</h2>
+            <p>Pasa el cursor sobre un nodo para ver el fragmento marcado, la rama de origen y la respuesta sin salir del chat que estás leyendo.</p>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="explore page-width" id="mapa" aria-labelledby="explore-title">
+      <div class="landing-section-heading">
+        <h2 id="explore-title">Un mapa para volver a tus ideas.</h2>
+        <p>Pasa el cursor sobre un nodo o selecciónalo para ver la vista previa de esa conversación.</p>
+      </div>
+      <div class="map-explorer">
+        <div class="explorer-graph" role="group" aria-label="Nodos de la conversación">
+          <svg viewBox="0 0 600 320" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <path d="M183 160C201 160 201 104 219 104M183 160C201 160 201 216 219 216M381 104H417"/>
+          </svg>
+          <button class="explorer-node graph-root" type="button" data-branch="https" aria-pressed="true" aria-controls="explorer-detail"><span data-icon="chat" aria-hidden="true"></span>¿Cómo funciona HTTPS?</button>
+          <button class="explorer-node graph-tls" type="button" data-branch="tls" aria-pressed="false" aria-controls="explorer-detail"><span data-icon="branch" aria-hidden="true"></span>¿Qué es TLS?</button>
+          <button class="explorer-node graph-certificate" type="button" data-branch="certificate" aria-pressed="false" aria-controls="explorer-detail"><span data-icon="branch" aria-hidden="true"></span>¿Y si caduca?</button>
+          <button class="explorer-node graph-encryption" type="button" data-branch="encryption" aria-pressed="false" aria-controls="explorer-detail"><span data-icon="branch" aria-hidden="true"></span>¿Qué se cifra?</button>
+        </div>
+        <div class="branch-preview explorer-detail" id="explorer-detail" aria-live="polite">
+          <h3 class="branch-preview-question">¿Cómo funciona HTTPS?</h3>
+          <div class="branch-preview-section">
+            <h4>Respuesta</h4>
+            <p>HTTPS protege la comunicación entre tu navegador y un servidor mediante TLS.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="landing-features page-width" id="funciones" aria-labelledby="features-title">
+      <div class="landing-section-heading">
+        <h2 id="features-title">Tu espacio de trabajo.</h2>
+      </div>
+      <div class="features-grid">
+        <article class="feature-card">
+          <span class="feature-icon" data-icon="clock" aria-hidden="true"></span>
+          <h3>Historial y chats temporales</h3>
+          <p>Tus conversaciones y sus ramas se guardan automáticamente en tu cuenta. Activa un chat temporal cuando quieras explorar algo sin añadirlo al historial.</p>
+          <p>Si tienes conversaciones de una versión anterior, puedes importar el historial del navegador a tu cuenta.</p>
+          <div class="feature-example" aria-hidden="true"><span data-icon="check"></span>Guardado<span class="feature-example-muted"><span data-icon="clock"></span>Chat temporal</span></div>
+        </article>
+        <article class="feature-card">
+          <span class="feature-icon" data-icon="network" aria-hidden="true"></span>
+          <h3>Un mapa a tu medida</h3>
+          <p>Amplía el mapa, arrastra el lienzo, ajusta el zoom, previsualiza una rama o pliega sus descendientes. Cambia el tema y decide cuándo se abre el mapa.</p>
+          <div class="feature-example" aria-hidden="true"><span data-icon="focus"></span>Ajustar a la vista<span class="feature-example-muted"><span data-icon="maximize"></span>Ampliar</span></div>
+        </article>
+        <article class="feature-card">
+          <span class="feature-icon" data-icon="copy" aria-hidden="true"></span>
+          <h3>Fórmulas y código legibles</h3>
+          <p>Las fórmulas se renderizan con KaTeX. El código incluye resaltado de sintaxis y un botón para copiar el bloque completo.</p>
+          <div class="feature-rich" data-rich-example><code>const fuerza = masa * aceleracion;</code></div>
+        </article>
+        <article class="feature-card feature-providers">
+          <span class="feature-icon" data-icon="key" aria-hidden="true"></span>
+          <h3>OpenAI o Gemini</h3>
+          <p>Elige tu proveedor. Tienes cinco mensajes gratuitos por cuenta con la clave de la plataforma y puedes continuar con tu propia clave de API.</p>
+          <div class="feature-example"><span data-icon="sparkle" aria-hidden="true"></span>OpenAI<span class="feature-example-muted"><span data-icon="sparkle" aria-hidden="true"></span>Gemini</span></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="landing-cta page-width" aria-labelledby="cta-title">
+      <span class="cta-mark" data-icon="brand" aria-hidden="true"></span>
+      <h2 id="cta-title">¿Qué quieres explorar?</h2>
+      <div class="hero-actions">
+        <a class="site-button site-button-primary" href="/app?modo=registro">Crear cuenta</a>
+        <a class="site-button site-button-outline" href="/app?modo=login">Iniciar sesión</a>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <div class="page-width">
+      <a class="brand" href="#inicio" aria-label="ThreadMap, volver al principio"><span class="brand-mark" data-icon="brand"></span>Thread<span>Map</span></a>
+      <nav aria-label="Enlaces del pie de página"><a href="#demo">Recorrido</a><a href="#funciones">Funciones</a></nav>
+    </div>
+  </footer>
+</body>
+</html>

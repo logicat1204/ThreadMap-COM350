@@ -13,11 +13,31 @@ async function route(server, { host = 'threadmap.example', path = '/health', met
   request.socket = { remoteAddress: ip };
   const response = new EventEmitter();
   response.setHeader = () => {};
-  response.writeHead = (status) => { response.status = status; };
-  response.end = (body) => { response.data = JSON.parse(body); };
+  response.writeHead = (status, headers) => { response.status = status; response.headers = headers; };
+  response.end = (body) => {
+    const type = response.headers?.['Content-Type'] ?? 'application/json';
+    response.data = type.startsWith('application/json') ? JSON.parse(body) : body?.toString();
+  };
   await server.listeners('request')[0](request, response);
   return response;
 }
+
+test('the public landing and both account entry links serve the corresponding pages', async () => {
+  const server = createThreadMapServer({ publicURL: 'https://threadmap.example' });
+  const landing = await route(server, { path: '/' });
+  assert.equal(landing.status, 200);
+  assert.match(landing.data, /href="\/app\?modo=login"/);
+  assert.match(landing.data, /href="\/app\?modo=registro"/);
+  for (const mode of ['login', 'registro']) {
+    const app = await route(server, { path: `/app?modo=${mode}` });
+    assert.equal(app.status, 200);
+    assert.match(app.data, /id="auth-form"/);
+    assert.match(app.data, /src="\/app\.js"/);
+  }
+  for (const path of ['/landing.css', '/landing.js', '/appearance.js']) {
+    assert.equal((await route(server, { path })).status, 200);
+  }
+});
 
 test('public deployment accepts only its configured host and HTTPS origin', async () => {
   const server = createThreadMapServer({ publicURL: 'https://threadmap.example' });
