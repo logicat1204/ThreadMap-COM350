@@ -23,6 +23,7 @@ const searchDialog = byId('conversation-search');
 const mapPanel = byId('map-panel');
 const mapToggle = byId('map-toggle');
 const temporaryToggle = byId('temporary-toggle');
+const shortcutTooltip = byId('shortcut-tooltip');
 const narrowMap = matchMedia('(max-width: 1050px)');
 const narrowSidebar = matchMedia('(max-width: 730px)');
 const requests = new Map();
@@ -68,6 +69,32 @@ let mapVisible = !narrowMap.matches && Object.keys(currentThread().branches).len
 let sidebarVisible = !narrowSidebar.matches && readPreference('threadmap.sidebar') !== 'collapsed';
 let expanded = false;
 let dockedMapView = null;
+
+function hideShortcutTooltip() {
+  shortcutTooltip.hidden = true;
+  document.querySelectorAll('[data-shortcut][aria-describedby="shortcut-tooltip"]').forEach((button) => button.removeAttribute('aria-describedby'));
+}
+
+document.querySelectorAll('[data-shortcut]').forEach((button) => {
+  button.removeAttribute('title');
+  const show = (event) => {
+    if (narrowSidebar.matches || event.pointerType === 'touch' || button.inert) return;
+    if (event.type === 'focus' && !button.matches(':focus-visible')) return;
+    shortcutTooltip.firstElementChild.textContent = button.dataset.tooltip || button.getAttribute('aria-label');
+    shortcutTooltip.lastElementChild.textContent = button.dataset.shortcut;
+    shortcutTooltip.hidden = false;
+    button.setAttribute('aria-describedby', 'shortcut-tooltip');
+    const box = button.getBoundingClientRect();
+    shortcutTooltip.style.left = `${Math.max(8, Math.min(innerWidth - shortcutTooltip.offsetWidth - 8, box.left + box.width / 2 - shortcutTooltip.offsetWidth / 2))}px`;
+    shortcutTooltip.style.top = `${box.bottom + 8 + shortcutTooltip.offsetHeight < innerHeight ? box.bottom + 8 : Math.max(8, box.top - shortcutTooltip.offsetHeight - 8)}px`;
+  };
+  button.addEventListener('pointerenter', show);
+  button.addEventListener('focus', show);
+  button.addEventListener('pointerleave', hideShortcutTooltip);
+  button.addEventListener('blur', hideShortcutTooltip);
+  button.addEventListener('pointerdown', hideShortcutTooltip);
+});
+window.addEventListener('resize', hideShortcutTooltip);
 
 const graph = createMap(byId('map-stage'), byId('map-scene'), byId('map-lines'), byId('map-nodes'), byId('zoom-level'), byId('branch-preview'), (id) => {
   navigate(state.threadId, id);
@@ -734,6 +761,16 @@ function applyTheme() {
 }
 
 function updatePanels() {
+  hideShortcutTooltip();
+  const menuButton = byId('sidebar-open');
+  const menuSlot = byId(narrowSidebar.matches ? 'chat-menu-slot' : 'sidebar-menu-slot');
+  if (menuButton.parentElement !== menuSlot) menuSlot.append(menuButton);
+  const intro = byId('composer-intro');
+  if (narrowSidebar.matches) {
+    if (intro.parentElement.id !== 'mobile-welcome-slot') byId('mobile-welcome-slot').append(intro);
+  } else if (!intro.parentElement.classList.contains('composer-inner')) {
+    document.querySelector('.composer-inner').prepend(intro);
+  }
   const previousButton = mapToggle.getBoundingClientRect();
   mapToggle.getAnimations().forEach((animation) => animation.cancel());
   workspace.classList.toggle('map-hidden', !mapVisible);
@@ -742,11 +779,11 @@ function updatePanels() {
   const mapOverlay = mapVisible && (narrowMap.matches || expanded);
   const sidebarOverlay = sidebarVisible && narrowSidebar.matches;
   mapPanel.inert = !mapVisible;
-  byId('sidebar').inert = mapOverlay;
+  byId('sidebar').inert = mapOverlay || (narrowSidebar.matches && !sidebarVisible);
   byId('sidebar-body').inert = !sidebarVisible;
   byId('sidebar-close').inert = !sidebarVisible;
   byId('sidebar-open').inert = sidebarVisible;
-  document.querySelector('.brand').inert = !sidebarVisible;
+  byId('sidebar').querySelector('.brand').inert = !sidebarVisible;
   const overlayOpen = sidebarOverlay || mapOverlay;
   workspace.classList.toggle('scrim-visible', overlayOpen);
   scrim.inert = !overlayOpen;
@@ -770,8 +807,8 @@ function updatePanels() {
     ], { duration: 340, easing: 'cubic-bezier(.22,.85,.25,1)' });
   }
   const mapLabel = mapVisible ? 'Ocultar mapa de conversación' : 'Mostrar mapa de conversación';
-  mapToggle.title = `${mapLabel} (Ctrl+Y)`;
   mapToggle.setAttribute('aria-label', mapLabel);
+  mapToggle.dataset.tooltip = mapVisible ? 'Ocultar mapa' : 'Mostrar mapa';
   mapToggle.setAttribute('aria-expanded', String(mapVisible));
   setIcon(byId('map-toggle-hint'), mapVisible ? 'panel-right-close' : 'panel-right-open');
   byId('sidebar-open').setAttribute('aria-expanded', String(sidebarVisible));
@@ -953,9 +990,6 @@ function closeOverlay() {
     mapToggle.focus();
   } else if (expanded) {
     setMapExpanded(false);
-  } else if (mapVisible && narrowMap.matches) {
-    showMap(false);
-    mapToggle.focus();
   } else if (sidebarVisible && narrowSidebar.matches) {
     showSidebar(false);
     byId('sidebar-open').focus();
@@ -963,6 +997,7 @@ function closeOverlay() {
 }
 scrim.onclick = closeOverlay;
 document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') hideShortcutTooltip();
   if (settings.open || searchDialog.open || event.isComposing) return;
   if (event.key === 'Tab' && mapVisible && (expanded || narrowMap.matches)) {
     const controls = [...mapPanel.querySelectorAll('button:not(:disabled), [tabindex="0"]')].filter((element) => element.getClientRects().length && !element.closest('[hidden]'));

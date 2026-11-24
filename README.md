@@ -43,7 +43,7 @@ Cada proveedor usa su modelo configurado tanto con la clave de plataforma como c
 | Proveedor | Variable de modelo | Modelo predeterminado |
 | --- | --- | --- |
 | OpenAI | `OPENAI_MODEL` | `gpt-5-mini` |
-| Gemini | `GEMINI_MODEL` | `gemini-3.1-flash-lite` |
+| Gemini | `GEMINI_MODEL` | `gemini-3.5-flash-lite` |
 
 `PORT` permite cambiar el puerto local. ThreadMap envía el contexto de la rama al proveedor seleccionado mediante [OpenAI Responses](https://developers.openai.com/api/reference/resources/responses/methods/create) o [Gemini generateContent](https://aistudio.google.com/api-reference/generate-content/generate-content).
 
@@ -61,7 +61,7 @@ El historial se guarda en el servidor por cuenta. El tema se guarda en el navega
 
 Ambos proveedores reciben la instrucción: `responde de forma directa, breve y muy tecnica.`
 
-En pantallas estrechas, el botón de ramas abre directamente el mapa como ventana grande con bordes redondeados y fondo desenfocado. Escape, el fondo exterior o el propio botón lo cierran.
+En móviles, el chat ocupa todo el ancho: el menú se abre desde el botón del encabezado y el cuadro de escritura permanece abajo, también en un chat vacío. En pantallas estrechas, el botón de ramas abre directamente el mapa como ventana grande con bordes redondeados y fondo desenfocado. Escape, el fondo exterior o el propio botón lo cierran. En escritorio, los controles del menú y del mapa muestran sus atajos **Ctrl+B** y **Ctrl+Y** al pasar el cursor o enfocarlos con el teclado.
 
 Las respuestas renderizan fórmulas con KaTeX: `$…$` y `\(…\)` en línea, `$$…$$` y `\[…\]` en bloques. Los bloques de código incluyen resaltado de sintaxis y un botón para copiar todo su contenido. Las dependencias y fuentes se sirven desde `public/vendor`, sin CDN. Para actualizarlas ejecuta `npm run vendor` después de actualizar los paquetes y guarda esos archivos junto con el lockfile.
 

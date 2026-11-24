@@ -139,7 +139,7 @@ export function createThreadMapServer({
   platformKey = process.env.OPENAI_API_KEY?.trim(),
   model = process.env.OPENAI_MODEL?.trim() || 'gpt-5-mini',
   geminiPlatformKey = process.env.GEMINI_API_KEY?.trim(),
-  geminiModel = process.env.GEMINI_MODEL?.trim() || 'gemini-3.1-flash-lite',
+  geminiModel = process.env.GEMINI_MODEL?.trim() || 'gemini-3.5-flash-lite',
   fetchProvider = fetch,
   accounts,
   publicURL = process.env.APP_URL,

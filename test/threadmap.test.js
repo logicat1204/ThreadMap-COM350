@@ -120,7 +120,7 @@ test('platform and personal credentials reach OpenAI only in their own modes', a
     platformKey: 'fixture-platform',
     model: 'gpt-5-mini',
     geminiPlatformKey: '',
-    geminiModel: 'gemini-3.1-flash-lite',
+    geminiModel: 'gemini-3.5-flash-lite',
     fetchProvider: async (url, options) => {
       requests.push({ url, authorization: options.headers.Authorization, input: JSON.parse(options.body) });
       return Response.json({ output: [{ type: 'message', content: [{ type: 'output_text', text: 'Una respuesta' }] }] });
@@ -134,7 +134,7 @@ test('platform and personal credentials reach OpenAI only in their own modes', a
       model: 'gpt-5-mini',
       providers: {
         openai: { platformAvailable: true, model: 'gpt-5-mini' },
-        gemini: { platformAvailable: false, model: 'gemini-3.1-flash-lite' },
+        gemini: { platformAvailable: false, model: 'gemini-3.5-flash-lite' },
       },
     },
   });
@@ -169,7 +169,7 @@ test('Gemini receives the selected key and ordered branch history in its native 
   const server = createThreadMapServer({
     platformKey: 'fixture-openai-platform',
     geminiPlatformKey: 'fixture-gemini-platform',
-    geminiModel: 'models/gemini-3.1-flash-lite',
+    geminiModel: 'models/gemini-3.5-flash-lite',
     fetchProvider: async (url, options) => {
       requests.push({ url, headers: options.headers, body: JSON.parse(options.body) });
       return Response.json({
@@ -194,7 +194,7 @@ test('Gemini receives the selected key and ordered branch history in its native 
   }
   assert.deepEqual(requests.map((request) => request.headers['x-goog-api-key']), ['fixture-gemini-platform', 'fixture-gemini-personal']);
   for (const request of requests) {
-    assert.equal(request.url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent');
+    assert.equal(request.url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent');
     assert.equal(request.headers.Authorization, undefined);
     assert.deepEqual(request.body.contents, [
       { role: 'user', parts: [{ text: history[0].content }] },
@@ -204,7 +204,7 @@ test('Gemini receives the selected key and ordered branch history in its native 
     assert.equal(request.body.systemInstruction.parts[0].text, 'responde de forma directa, breve y muy tecnica.');
   }
   const { data } = await callRoute(server, { method: 'GET', path: '/api/config' });
-  assert.deepEqual(data.providers.gemini, { platformAvailable: true, model: 'gemini-3.1-flash-lite' });
+  assert.deepEqual(data.providers.gemini, { platformAvailable: true, model: 'gemini-3.5-flash-lite' });
   assert.doesNotMatch(JSON.stringify(data), /fixture/);
 });
 

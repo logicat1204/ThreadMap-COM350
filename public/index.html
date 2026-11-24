@@ -2,7 +2,7 @@
 <html lang="es" data-theme="dark">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
   <meta name="description" content="Conversaciones con IA que puedes explorar en distintas ramas.">
   <title>ThreadMap</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2301605F'%3E%3Cpath d='M12 2.3C10.6 7.8 6.7 12 2 13c4.8.6 8.8 3.9 10 8.7 1.2-4.8 5.2-8.1 10-8.7-4.7-1-8.6-5.2-10-10.7Zm0 0v19.4' fill='none' stroke='%2301605F' stroke-width='1.2'/%3E%3Ccircle cx='12' cy='2.3' r='1.65'/%3E%3Ccircle cx='2' cy='13' r='1.25'/%3E%3Ccircle cx='22' cy='13' r='1.25'/%3E%3Ccircle cx='12' cy='15.3' r='1.25'/%3E%3Ccircle cx='12' cy='21.7' r='1.35'/%3E%3C/svg%3E">
@@ -34,12 +34,12 @@
   <div class="workspace" id="workspace" hidden>
     <button class="scrim" id="scrim" aria-label="Cerrar paneles" tabindex="-1" inert></button>
     <aside class="sidebar" id="sidebar" aria-label="Historial">
-      <div class="brand-row">
+      <div class="brand-row" id="sidebar-menu-slot">
         <a class="brand" href="/" aria-label="ThreadMap"><span class="brand-mark" data-icon="brand"></span>Thread<span>Map</span></a>
-        <button class="icon-button sidebar-open" id="sidebar-open" aria-label="Desplegar historial" aria-controls="sidebar-body" aria-expanded="false" title="Desplegar historial (Ctrl+B)" aria-keyshortcuts="Control+B">
-          <span class="brand-mark" data-icon="brand"></span><span class="sidebar-open-glyph" data-icon="panel-left"></span>
+        <button class="icon-button sidebar-open" id="sidebar-open" aria-label="Desplegar historial" aria-controls="sidebar-body" aria-expanded="false" title="Desplegar historial (Ctrl+B)" aria-keyshortcuts="Control+B" data-shortcut="Ctrl+B" data-tooltip="Mostrar barra lateral">
+          <span data-icon="panel-left"></span>
         </button>
-        <button class="icon-button sidebar-close" id="sidebar-close" data-icon="panel-left" aria-label="Plegar historial" aria-controls="sidebar-body" aria-expanded="true" title="Plegar historial (Ctrl+B)" aria-keyshortcuts="Control+B"></button>
+        <button class="icon-button sidebar-close" id="sidebar-close" data-icon="panel-left" aria-label="Plegar historial" aria-controls="sidebar-body" aria-expanded="true" title="Plegar historial (Ctrl+B)" aria-keyshortcuts="Control+B" data-shortcut="Ctrl+B" data-tooltip="Ocultar barra lateral"></button>
       </div>
       <div class="sidebar-body" id="sidebar-body">
         <button class="new-chat" id="new-chat"><span data-icon="plus"></span>Nueva conversación</button>
@@ -57,11 +57,12 @@
 
     <main class="chat" aria-label="Chat">
       <header class="chat-header">
+        <span class="mobile-menu-slot" id="chat-menu-slot"></span>
         <div class="chat-identity"><span class="chat-symbol" data-icon="chat"></span><div><h1 id="chat-title">Fundamentos de redes</h1><span id="chat-subtitle" class="chat-subtitle"></span></div></div>
         <div class="header-actions">
           <button class="icon-button temporary-toggle" id="temporary-toggle" type="button" title="Chat temporal" aria-label="Chat temporal" aria-pressed="false" data-icon="clock" hidden></button>
           <span class="map-toggle-slot" id="chat-map-slot">
-            <button class="icon-button map-toggle" id="map-toggle" type="button" aria-label="Mostrar mapa de conversación" title="Mostrar mapa de conversación (Ctrl+Y)" aria-controls="map-panel" aria-expanded="false" aria-keyshortcuts="Control+Y">
+            <button class="icon-button map-toggle" id="map-toggle" type="button" aria-label="Mostrar mapa de conversación" title="Mostrar mapa de conversación (Ctrl+Y)" aria-controls="map-panel" aria-expanded="false" aria-keyshortcuts="Control+Y" data-shortcut="Ctrl+Y">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <defs>
                   <g id="map-branch-shape" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
@@ -81,6 +82,7 @@
         </div>
       </header>
       <div class="chat-scroll" id="chat-scroll">
+        <div class="mobile-welcome-slot" id="mobile-welcome-slot"></div>
         <div id="messages" class="messages" aria-label="Mensajes de la conversación"></div>
       </div>
       <footer class="composer-area">
@@ -158,6 +160,7 @@
     <section class="settings-preferences" aria-labelledby="map-preferences-title"><h3 id="map-preferences-title">Mapa de conversación</h3><label class="preference-option"><span><strong>Abrir el mapa al crear una rama</strong><small>Si lo desactivas, solo se animará el icono.</small></span><input type="checkbox" id="auto-open-map" role="switch"></label><p>Esta preferencia se guarda automáticamente en este navegador.</p></section>
   </dialog>
   <div class="toast" id="toast" role="status" hidden></div>
+  <div class="shortcut-tooltip" id="shortcut-tooltip" role="tooltip" hidden><span></span><kbd></kbd></div>
   <div class="sync-alert" id="sync-alert" role="alert" hidden><span id="sync-message"></span><button id="sync-retry" type="button">Reintentar</button><button id="sync-export" type="button">Descargar cambios</button><button id="sync-reload" type="button">Recargar</button></div>
 </body>
 </html>

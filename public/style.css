@@ -167,15 +167,9 @@ h1, h2, h3, p { margin: 0; }
   transition: opacity .18s ease, visibility 0s linear .18s, background-color .16s ease;
 }
 .sidebar-hidden .sidebar-open { opacity: 1; visibility: visible; transition-delay: 0s; }
-.sidebar-open > span { grid-area: 1 / 1; }
-.sidebar-open .brand-mark { margin: 0; transition: opacity .14s ease; }
-.sidebar-open-glyph { opacity: 0; transition: opacity .14s ease; }
-.sidebar-open:focus-visible .brand-mark { opacity: 0; }
-.sidebar-open:focus-visible .sidebar-open-glyph { opacity: 1; }
-@media (hover: hover) {
-  .sidebar-open:hover .brand-mark { opacity: 0; }
-  .sidebar-open:hover .sidebar-open-glyph { opacity: 1; }
-}
+.mobile-menu-slot, .mobile-welcome-slot { display: none; }
+.shortcut-tooltip { position: fixed; z-index: 30; display: flex; align-items: center; gap: 8px; padding: 5px 8px; border: 0; border-radius: 8px; background: #303030; color: #f3f3f3; box-shadow: 0 2px 6px #0002; font-size: 12px; font-weight: 500; line-height: 1.4; white-space: nowrap; pointer-events: none; max-width: calc(100vw - 16px); }
+.shortcut-tooltip kbd { flex: none; border: 0; padding: 0; color: #b0b0b0; font: 500 11px/1.4 var(--font); }
 .new-chat {
   display: flex;
   align-items: center;
@@ -751,11 +745,23 @@ dialog.conversation-search { width: 620px; max-width: calc(100vw - 32px); max-he
   #map-expand { display: none; }
 }
 @media (max-width: 730px) {
-  :root { --header-height: 64px; --sidebar-rail: 50px; }
-  .workspace { grid-template-columns: var(--sidebar-rail) minmax(0, 1fr); }
-  .sidebar { position: fixed; inset: 0 auto 0 0; width: min(86vw, 265px); z-index: 10; padding-top: 13px; transition: width var(--panel-duration) var(--panel-ease); }
-  .sidebar-hidden .sidebar { width: var(--sidebar-rail); }
-  .chat-header { padding-inline: 10px; gap: 6px; }
+  :root { --header-height: 56px; --sidebar-rail: 0px; }
+  .workspace { grid-template-columns: minmax(0, 1fr); }
+  .chat { grid-column: 1; }
+  .sidebar { position: fixed; inset: 0 auto 0 0; width: min(86vw, 280px); z-index: 10; padding-top: 13px; transition: translate var(--panel-duration) var(--panel-ease), visibility 0s; }
+  .sidebar-hidden .sidebar { width: min(86vw, 280px); translate: -100% 0; visibility: hidden; transition-delay: 0s, var(--panel-duration); }
+  .chat-header { padding-inline: 12px; gap: 8px; border-bottom-color: transparent; }
+  .mobile-menu-slot { display: flex; align-items: center; flex: none; }
+  .mobile-menu-slot .sidebar-open.icon-button { position: static; width: 34px; height: 34px; opacity: 1; visibility: visible; transition: background-color .16s ease; }
+  .chat-empty .chat-identity { visibility: hidden; }
+  .chat-empty .chat-scroll { display: flex; align-items: center; justify-content: center; }
+  .chat-empty .messages { display: none; }
+  .chat-empty .mobile-welcome-slot { display: block; width: 100%; padding: 24px; }
+  .mobile-welcome-slot .composer-intro { position: static; }
+  .mobile-welcome-slot .composer-intro h2 { font-size: clamp(27px, 7vw, 36px); }
+  .chat-empty .composer-area { flex: none; display: block; padding-block: 5px max(10px, env(safe-area-inset-bottom)); }
+  .chat-empty .composer-tools { position: static; padding-top: 3px; }
+  .shortcut-tooltip { display: none; }
   .chat-symbol { display: none; }
   .chat-identity h1 { font-size: 13.5px; }
   .chat-subtitle { font-size: 10px; }
