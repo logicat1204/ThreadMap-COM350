@@ -62,6 +62,14 @@ test('real registration, sessions and private workspaces survive restarts', asyn
     assert.ok(stored.length > 50);
     db.close();
   });
+  await t.test('real session cookies open the chat from the root and clean up login URLs', async () => {
+    for (const path of ['/', '/app?modo=login']) {
+      const response = await fetch(baseURL + path, { redirect: 'manual', headers: { Cookie: ana.cookies } });
+      assert.equal(response.status, 302);
+      assert.equal(response.headers.get('location'), '/app');
+      await response.text();
+    }
+  });
   await t.test('a registered user can save a tree and a different account cannot see or overwrite it', async () => {
     const thread = createThread();
     thread.branches[thread.rootId].messages.push(message('user', 'Pregunta privada de Ana'));
@@ -93,6 +101,9 @@ test('real registration, sessions and private workspaces survive restarts', asyn
     const oldCookie = ana.cookies;
     assert.equal((await request('/api/auth/sign-out', { method: 'POST', cookie: oldCookie, body: {} })).status, 200);
     assert.equal((await request('/api/workspace', { cookie: oldCookie })).status, 401);
+    const landing = await fetch(baseURL + '/', { redirect: 'manual', headers: { Cookie: oldCookie } });
+    assert.equal(landing.status, 200, 'revoked cookies must not redirect back into the chat');
+    assert.match(await landing.text(), /class="landing"/);
     const wrong = await request('/api/auth/sign-in/email', { method: 'POST', body: { email: 'ana@example.test', password: 'incorrect-password' } });
     assert.equal(wrong.status, 401);
     ana = await request('/api/auth/sign-in/email', { method: 'POST', body: { email: 'ana@example.test', password } });
@@ -107,6 +118,21 @@ test('real registration, sessions and private workspaces survive restarts', asyn
       assert.deepEqual(reopened.loadWorkspace(ana.data.user.id).workspace, workspace);
       assert.equal((await reopened.getSession({ headers: { cookie: ana.cookies } })).user.id, ana.data.user.id);
     } finally { reopened.close(); }
+  });
+  await t.test('deleting a conversation with all its branches persists without changing another account', async () => {
+    const empty = { threads: [], threadId: null, branchId: null };
+    const removed = await request('/api/workspace', { method: 'PUT', cookie: ana.cookies, body: { revision: 1, workspace: empty } });
+    assert.equal(removed.status, 200);
+    const reopened = await createAccounts({ databasePath, baseURL });
+    try {
+      assert.deepEqual(reopened.loadWorkspace(ana.data.user.id).workspace, empty);
+      assert.deepEqual(reopened.loadWorkspace(luis.data.user.id).workspace, empty);
+      assert.equal(reopened.loadWorkspace(luis.data.user.id).revision, 1, 'the other account was not updated');
+    } finally { reopened.close(); }
+    // Undo restores the complete tree, using the latest revision rather than overwriting a stale tab.
+    const restored = await request('/api/workspace', { method: 'PUT', cookie: ana.cookies, body: { revision: removed.data.revision, workspace } });
+    assert.equal(restored.status, 200);
+    assert.deepEqual((await request('/api/workspace', { cookie: ana.cookies })).data.workspace, workspace);
   });
   await t.test('repeated bad logins are throttled even with spoofed IP headers', async () => {
     let status;

@@ -29,6 +29,8 @@ Cada vez que abres la aplicación empiezas en un chat vacío. Los chats vacíos 
 
 El guardado es automático. Si falla, puedes reintentarlo o descargar tus cambios en JSON. Si otra pestaña modificó el historial, se evita sobrescribirla y se ofrece descargar los cambios antes de recargar. Las claves personales de IA siguen solo en memoria y no se guardan en SQLite.
 
+En **Conversaciones**, pasa el cursor sobre un chat para mostrar la papelera; también aparece al enfocar la fila con el teclado y siempre está visible en móvil. Elimina la conversación completa y sus ramas, con **Deshacer** disponible durante ocho segundos. El cupo gratuito no se reinicia al eliminar chats. Si visitas `/` con una sesión válida, el servidor te redirige a `/app`; sin sesión muestra la landing. Las URLs antiguas `/app?modo=login` y `/app?modo=registro` también se limpian cuando ya estás autenticado.
+
 ## Conectar OpenAI o Gemini
 
 En **Configuración**, elige el **Proveedor** y el **Modo de conexión**. La selección inicial es **Gemini → Clave de la plataforma**; se respeta una elección anterior del navegador.

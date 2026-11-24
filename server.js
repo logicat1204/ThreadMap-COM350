@@ -161,7 +161,16 @@ export function createThreadMapServer({
       if (!allowsHost(request.headers.host, origin)) {
         throw new RequestError(403, 'Servidor no permitido.');
       }
-      const path = new URL(request.url, 'http://localhost').pathname;
+      const url = new URL(request.url, 'http://localhost');
+      const path = url.pathname;
+      if (['GET', 'HEAD'].includes(request.method) && request.headers.cookie &&
+          (path === '/' || (path === '/app' && url.searchParams.has('modo')))) {
+        const session = await (await getAccounts()).getSession(request);
+        if (session) {
+          response.writeHead(302, { ...securityHeaders, Location: '/app', Vary: 'Cookie' });
+          return response.end();
+        }
+      }
       if (!['GET', 'HEAD'].includes(request.method)) {
         if (!allowsOrigin(request.headers.origin, request.headers.host, origin)) {
           throw new RequestError(403, 'Origen no permitido.');

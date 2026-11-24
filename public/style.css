@@ -222,6 +222,15 @@ h1, h2, h3, p { margin: 0; }
 .history-item[aria-current] svg { color: var(--accent); }
 .history-item:hover:not([aria-current]) { background: var(--hover); }
 .history-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.history-row { position: relative; }
+.history-row .history-item { padding-right: 36px; }
+.history-delete.icon-button { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 27px; height: 27px; opacity: 0; pointer-events: none; transition: opacity .15s ease; }
+.history-delete svg { width: 15px; height: 15px; }
+.history-row:hover .history-delete, .history-row:focus-within .history-delete { opacity: 1; pointer-events: auto; }
+.history-delete.icon-button:hover { color: var(--danger); background: var(--hover); }
+@media (hover: none), (pointer: coarse) {
+  .history-delete.icon-button { opacity: 1; pointer-events: auto; }
+}
 .history-search {
   margin: 4px 1px 3px;
   min-width: 0;
@@ -663,7 +672,7 @@ dialog[open]::backdrop { opacity: 1; }
 .preference-option input:checked::before { translate: 13px 0; background: white; }
 #model-label { font-size: 11.5px; color: var(--muted); }
 .primary-button { background: var(--brand); color: #fff; padding: 8px 13px; border: 0; border-radius: 8px; font-weight: 650; font-size: 13px; transition: background-color .18s ease; }
-.toast { display: block; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); border: 1px solid var(--border); border-radius: 9px; background: var(--paper); color: var(--text); box-shadow: 0 5px 20px #0005; padding: 7px 14px; max-width: calc(100% - 24px); z-index: 20; font-size: 12px; }
+.toast { display: flex; align-items: center; gap: 14px; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); border: 1px solid var(--border); border-radius: 9px; background: var(--paper); color: var(--text); box-shadow: 0 5px 20px #0005; padding: 7px 14px; max-width: calc(100% - 24px); z-index: 20; font-size: 12px; }
 
 .auth-screen { min-height: 100dvh; display: grid; place-items: center; padding: 32px 20px; background: radial-gradient(ellipse at 50% 0%, var(--accent-wash), transparent 65%), var(--paper); }
 .auth-card { width: min(100%, 380px); }
@@ -765,6 +774,7 @@ dialog.conversation-search { width: 620px; max-width: calc(100vw - 32px); max-he
   .chat-symbol { display: none; }
   .chat-identity h1 { font-size: 13.5px; }
   .chat-subtitle { font-size: 10px; }
+  .history-delete.icon-button { opacity: 1; pointer-events: auto; }
   .connection { min-height: 32px; gap: 6px; padding-inline: 6px; font-size: 12px; }
   .header-actions { gap: 7px; }
   .messages { padding: 22px 14px 14px; gap: 22px; }

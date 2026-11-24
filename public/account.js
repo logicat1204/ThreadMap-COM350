@@ -84,6 +84,7 @@ export async function loadAccount() {
     if (!response.ok) throw new Error('No se pudo comprobar tu sesión.');
     const { user } = await response.json();
     if (user) {
+      if (location.search) history.replaceState(null, '', '/app');
       const usageResponse = await fetch('/api/usage');
       if (!usageResponse.ok) throw new Error('No se pudo comprobar tu cupo de mensajes. Recarga para continuar.');
       const { usage } = await usageResponse.json();

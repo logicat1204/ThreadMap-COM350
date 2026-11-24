@@ -120,12 +120,18 @@ function draft() {
   return drafts.get(state.branchId);
 }
 
-function notify(text) {
+function notify(text, undo = null) {
   const toast = byId('toast');
   toast.textContent = text;
+  if (undo) {
+    const button = el('button', 'text-button', 'Deshacer');
+    button.type = 'button';
+    button.onclick = undo;
+    toast.append(button);
+  }
   toast.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { toast.hidden = true; }, 3000);
+  toastTimer = setTimeout(() => { toast.hidden = true; toast.replaceChildren(); }, undo ? 8000 : 3000);
 }
 
 let revision = account.revision;
@@ -223,6 +229,42 @@ try {
   }
 } catch { /* Keep an unreadable legacy workspace untouched. */ }
 
+function deleteConversation(thread) {
+  const index = state.threads.indexOf(thread);
+  if (index < 0) return;
+  const wasActive = state.threadId === thread.id;
+  const activeBranch = state.branchId;
+  for (const branchId of Object.keys(thread.branches)) {
+    requests.get(branchId)?.abort();
+    requests.delete(branchId);
+    drafts.delete(branchId);
+    errors.delete(branchId);
+    typing.delete(branchId);
+    shownContext.delete(branchId);
+  }
+  state.threads.splice(index, 1);
+  if (wasActive) {
+    const blank = state.threads.find((item) => !item.temporary && !item.branches[item.rootId].messages.length && !drafts.get(item.rootId)?.text) || createThread();
+    if (!state.threads.includes(blank)) state.threads.unshift(blank);
+    navigate(blank.id, blank.rootId);
+    showMap(false);
+    if (narrowSidebar.matches) showSidebar(false);
+    prompt.focus({ preventScroll: true });
+  } else {
+    renderHistory();
+    save();
+    byId('history').querySelector('.history-item')?.focus({ preventScroll: true });
+  }
+  if (searchDialog.open) renderSearch();
+  notify('Conversación eliminada', () => {
+    state.threads.splice(Math.min(index, state.threads.length), 0, thread);
+    if (wasActive) navigate(thread.id, activeBranch);
+    else { renderHistory(); save(); }
+    if (searchDialog.open) renderSearch();
+    notify('Conversación restaurada');
+  });
+}
+
 function renderHistory() {
   const history = byId('history');
   history.replaceChildren();
@@ -238,6 +280,7 @@ function renderHistory() {
     const group = el('section', 'history-group');
     group.append(el('h3', 'history-group-label', label));
     for (const thread of threads) {
+      const row = el('div', 'history-row');
       const button = el('button', 'history-item');
       button.title = thread.title;
       const glyph = el('span');
@@ -248,7 +291,9 @@ function renderHistory() {
         navigate(thread.id, thread.rootId);
         if (narrowSidebar.matches) showSidebar(false);
       };
-      group.append(button);
+      const remove = action(`Eliminar conversación: ${thread.title}`, 'trash', () => deleteConversation(thread), 'icon-button small history-delete');
+      row.append(button, remove);
+      group.append(row);
     }
     history.append(group);
   }
@@ -523,7 +568,7 @@ function navigate(threadId, branchId, { end = false, fit = false } = {}) {
   const changedThread = threadId !== state.threadId;
   const changedConversation = changedThread || branchId !== state.branchId;
   const previous = currentThread();
-  if (changedThread && previous.temporary) {
+  if (changedThread && previous?.temporary) {
     state.threads = state.threads.filter((thread) => thread !== previous);
     for (const id of Object.keys(previous.branches)) {
       requests.get(id)?.abort();
@@ -610,6 +655,7 @@ async function reply(thread, branch) {
       signal: controller.signal,
     });
     const data = await response.json();
+    if (controller.signal.aborted || !state.threads.includes(thread)) return;
     if (data.usage) {
       usage = data.usage;
       renderConnection();

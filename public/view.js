@@ -3,6 +3,7 @@ import katex from './vendor/katex/katex.mjs';
 import hljs from './vendor/highlight/highlight.js';
 
 const shapes = {
+  trash: '<path d="M3 6h18M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M5 6l1 14a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1l1-14M10 10v7m4-7v7"/>',
   'panel-right-open': '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16m-5-7-3-3 3-3"/>',
   'panel-right-close': '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16m-8-7 3-3-3-3"/>',
   logout: '<path d="M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4m6-13 5 5-5 5m-7-5h12"/>',
