@@ -10,25 +10,44 @@
   <script type="module" src="/app.js"></script>
 </head>
 <body>
-  <div class="workspace" id="workspace">
-    <button class="scrim" id="scrim" aria-label="Cerrar paneles" inert></button>
+  <section class="auth-screen" id="auth-screen" aria-labelledby="auth-title">
+    <div class="auth-card">
+      <a class="brand" href="/" aria-label="ThreadMap"><span class="brand-mark" data-icon="brand"></span>Thread<span>Map</span></a>
+      <p class="auth-eyebrow">UN ESPACIO PARA TUS IDEAS</p>
+      <h1 id="auth-title">Bienvenido de nuevo</h1>
+      <p class="auth-description" id="auth-description">Inicia sesión para continuar tus conversaciones.</p>
+      <form id="auth-form" class="auth-form" hidden>
+        <label id="auth-name-field" hidden>Nombre<input id="auth-name" name="name" autocomplete="name" maxlength="80"></label>
+        <label>Correo electrónico<input id="auth-email" name="email" type="email" autocomplete="username" maxlength="254" required placeholder="tu@correo.com"></label>
+        <label>Contraseña<input id="auth-password" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required placeholder="Al menos 8 caracteres"></label>
+        <p class="auth-error" id="auth-error" role="alert" hidden></p>
+        <button class="primary-button auth-submit" id="auth-submit" type="submit">Iniciar sesión</button>
+        <p class="auth-switch"><span id="auth-switch-label">¿Primera vez aquí?</span> <button type="button" id="auth-switch">Crear una cuenta</button></p>
+        <p class="auth-note">Demo · Registro sin confirmación de correo.<br>Usa una contraseña de prueba. No hay recuperación por email.</p>
+      </form>
+      <p id="auth-loading" role="status">Abriendo tu espacio…</p>
+    </div>
+  </section>
+  <div class="workspace" id="workspace" hidden>
+    <button class="scrim" id="scrim" aria-label="Cerrar paneles" tabindex="-1" inert></button>
     <aside class="sidebar" id="sidebar" aria-label="Historial">
       <div class="brand-row">
         <a class="brand" href="/" aria-label="ThreadMap"><span class="brand-mark" data-icon="brand"></span>Thread<span>Map</span></a>
-        <button class="icon-button sidebar-open" id="sidebar-open" aria-label="Desplegar historial" aria-controls="sidebar-body" aria-expanded="false" title="Desplegar historial">
+        <button class="icon-button sidebar-open" id="sidebar-open" aria-label="Desplegar historial" aria-controls="sidebar-body" aria-expanded="false" title="Desplegar historial (Ctrl+B)" aria-keyshortcuts="Control+B">
           <span class="brand-mark" data-icon="brand"></span><span class="sidebar-open-glyph" data-icon="panel-left"></span>
         </button>
-        <button class="icon-button sidebar-close" id="sidebar-close" data-icon="panel-left" aria-label="Plegar historial" aria-controls="sidebar-body" aria-expanded="true" title="Plegar historial"></button>
+        <button class="icon-button sidebar-close" id="sidebar-close" data-icon="panel-left" aria-label="Plegar historial" aria-controls="sidebar-body" aria-expanded="true" title="Plegar historial (Ctrl+B)" aria-keyshortcuts="Control+B"></button>
       </div>
       <div class="sidebar-body" id="sidebar-body">
         <button class="new-chat" id="new-chat"><span data-icon="plus"></span>Nueva conversación</button>
-        <div class="history-heading"><h2>Conversaciones</h2><button class="icon-button small" id="search-toggle" data-icon="search" aria-label="Buscar conversaciones" title="Buscar conversaciones" aria-expanded="false"></button></div>
-        <input type="search" id="history-search" class="history-search" placeholder="Buscar…" aria-label="Buscar conversaciones" hidden>
+        <button class="utility sidebar-search" id="search-toggle" aria-label="Buscar conversaciones" aria-haspopup="dialog" aria-controls="conversation-search" aria-expanded="false"><span data-icon="search"></span>Buscar conversaciones</button>
+        <button class="utility" id="import-local" hidden><span data-icon="layers"></span>Importar historial local</button>
+        <div class="history-heading"><h2>Conversaciones</h2></div>
         <nav class="history" id="history" aria-label="Conversaciones"></nav>
         <div class="sidebar-footer">
           <button class="utility" id="theme-control"><span data-icon="moon"></span><span id="theme-label">Modo oscuro</span></button>
           <button class="utility" id="settings-open"><span data-icon="settings"></span><span>Configuración</span></button>
-          <div class="workspace-account"><span class="account-avatar" data-icon="layers"></span><div><strong>Mi espacio</strong><small>Espacio local</small></div></div>
+          <div class="workspace-account"><span class="account-avatar" id="account-avatar">T</span><div><strong id="account-name">Mi espacio</strong><small id="account-status" role="status">Guardado</small></div><button class="icon-button small" id="logout" data-icon="logout" title="Cerrar sesión" aria-label="Cerrar sesión"></button></div>
         </div>
       </div>
     </aside>
@@ -37,7 +56,7 @@
       <header class="chat-header">
         <div class="chat-identity"><span class="chat-symbol" data-icon="chat"></span><div><h1 id="chat-title">Fundamentos de redes</h1><span id="chat-subtitle" class="chat-subtitle"></span></div></div>
         <div class="header-actions">
-          <button class="temporary-toggle" id="temporary-toggle" type="button" title="Chat temporal" aria-label="Chat temporal" aria-pressed="false" data-icon="clock" hidden></button>
+          <button class="icon-button temporary-toggle" id="temporary-toggle" type="button" title="Chat temporal" aria-label="Chat temporal" aria-pressed="false" data-icon="clock" hidden></button>
           <span class="map-toggle-slot" id="chat-map-slot">
             <button class="icon-button map-toggle" id="map-toggle" type="button" aria-label="Mostrar mapa de conversación" title="Mostrar mapa de conversación (Ctrl+Y)" aria-controls="map-panel" aria-expanded="false" aria-keyshortcuts="Control+Y">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -53,6 +72,7 @@
                 <use href="#map-branch-shape" stroke="currentColor"/>
                 <g mask="url(#map-branch-mask)"><rect class="map-branch-shine" x="-22" width="22" height="24" fill="url(#map-branch-light)"/></g>
               </svg>
+              <span class="map-toggle-hint" id="map-toggle-hint" data-icon="panel-right-open" aria-hidden="true"></span>
             </button>
           </span>
         </div>
@@ -68,7 +88,7 @@
           </div>
           <div class="chat-error" id="chat-error" role="alert" hidden><span data-icon="info"></span><p id="error-text"></p><button class="text-button" id="error-action"></button></div>
           <form id="composer" class="composer">
-            <div id="composer-quote" class="composer-quote" hidden><span data-icon="branch"></span><div><strong>Nueva rama</strong><span id="composer-excerpt"></span></div><button type="button" class="icon-button small" id="quote-remove" data-icon="x" aria-label="Quitar referencia" title="Quitar referencia"></button></div>
+            <div id="composer-quote" class="composer-quote" hidden><span data-icon="branch"></span><div><span id="composer-excerpt"></span></div><button type="button" class="icon-button small" id="quote-remove" data-icon="x" aria-label="Quitar referencia" title="Quitar referencia"></button></div>
             <textarea id="prompt" aria-label="Escribe tu pregunta" placeholder="Escribe tu pregunta…" rows="1" maxlength="16000" required></textarea>
             <button type="submit" id="send" class="send" data-icon="arrow-up" aria-label="Enviar pregunta" title="Enviar pregunta" disabled></button>
           </form>
@@ -84,10 +104,9 @@
     <aside class="map-panel" id="map-panel" aria-label="Mapa de conversación">
       <div class="map-resize" id="map-resize" tabindex="0" role="separator" aria-label="Ancho del mapa" aria-orientation="vertical"></div>
       <header class="map-header">
-        <div class="map-heading"><span class="map-mark" data-icon="network"></span><div><h2>Mapa de conversación</h2><p id="map-count"></p></div></div>
+        <div class="map-heading"><span class="map-toggle-slot" id="panel-map-slot"></span><div><h2 id="map-title">Mapa de conversación</h2><p id="map-count"></p></div></div>
         <div class="map-actions">
           <button class="icon-button" id="map-expand" data-icon="maximize" aria-label="Ampliar mapa en la página" title="Ampliar mapa en la página" aria-pressed="false"></button>
-          <span class="map-toggle-slot" id="panel-map-slot"></span>
         </div>
       </header>
       <div class="map-stage" id="map-stage" aria-label="Árbol de ramificaciones">
@@ -104,9 +123,16 @@
   </div>
 
   <button class="ask-selection" id="ask-selection" hidden><span data-icon="branch"></span>Ask about this</button>
+  <dialog class="conversation-search" id="conversation-search" aria-labelledby="search-title">
+    <header class="search-heading"><div><h2 id="search-title">Buscar conversaciones</h2><p>Encuentra una idea, una respuesta o una rama.</p></div><button class="icon-button" id="search-close" type="button" data-icon="x" aria-label="Cerrar búsqueda" title="Cerrar búsqueda"></button></header>
+    <div class="search-input-wrap"><span data-icon="search"></span><input type="search" id="history-search" autocomplete="off" placeholder="Buscar en todos tus mensajes…" aria-label="Buscar en conversaciones" aria-controls="search-results" autofocus maxlength="200"><kbd>Esc</kbd></div>
+    <p class="search-status" id="search-status" role="status" aria-live="polite"></p>
+    <div class="search-results" id="search-results" aria-label="Resultados de búsqueda"></div>
+    <footer class="search-footer"><span>↑ ↓ para recorrer</span><span>Enter para abrir la rama</span></footer>
+  </dialog>
   <dialog id="settings" aria-labelledby="settings-title">
     <form id="settings-form" class="settings-form">
-      <div class="settings-heading"><span class="map-mark" data-icon="key"></span><div><h2 id="settings-title">Conexión de IA</h2><p>Elige el proveedor y la clave que usará tu chat.</p></div><button type="button" class="icon-button" id="settings-close" data-icon="x" aria-label="Cerrar configuración" title="Cerrar configuración"></button></div>
+      <div class="settings-heading"><span class="map-mark" data-icon="settings"></span><div><h2 id="settings-title">Configuración</h2><p>Conexión de IA y preferencias de tu espacio.</p></div><button type="button" class="icon-button" id="settings-close" data-icon="x" aria-label="Cerrar configuración" title="Cerrar configuración"></button></div>
       <fieldset class="provider-options">
         <legend>Proveedor</legend>
         <label class="mode-option"><input type="radio" name="provider" value="openai" checked><strong>OpenAI</strong></label>
@@ -125,7 +151,9 @@
       <p id="settings-error" class="settings-error" role="alert" hidden></p>
       <div class="settings-footer"><span id="model-label"></span><button class="primary-button" type="submit">Guardar conexión</button></div>
     </form>
+    <section class="settings-preferences" aria-labelledby="map-preferences-title"><h3 id="map-preferences-title">Mapa de conversación</h3><label class="preference-option"><span><strong>Abrir el mapa al crear una rama</strong><small>Si lo desactivas, solo se animará el icono.</small></span><input type="checkbox" id="auto-open-map" role="switch"></label><p>Esta preferencia se guarda automáticamente en este navegador.</p></section>
   </dialog>
   <div class="toast" id="toast" role="status" hidden></div>
+  <div class="sync-alert" id="sync-alert" role="alert" hidden><span id="sync-message"></span><button id="sync-retry" type="button">Reintentar</button><button id="sync-export" type="button">Descargar cambios</button><button id="sync-reload" type="button">Recargar</button></div>
 </body>
 </html>

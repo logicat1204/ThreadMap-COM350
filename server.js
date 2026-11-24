@@ -2,10 +2,13 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
+import { createAccounts } from './accounts.js';
 
 const assets = {
   '/': ['index.html', 'text/html; charset=utf-8'],
   '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
+  '/account.js': ['account.js', 'text/javascript; charset=utf-8'],
+  '/search.js': ['search.js', 'text/javascript; charset=utf-8'],
   '/threads.js': ['threads.js', 'text/javascript; charset=utf-8'],
   '/view.js': ['view.js', 'text/javascript; charset=utf-8'],
   '/style.css': ['style.css', 'text/css; charset=utf-8'],
@@ -31,7 +34,7 @@ function sendJSON(response, status, data) {
   response.end(JSON.stringify(data));
 }
 
-async function readJSON(request) {
+async function readJSON(request, limit = maxBytes) {
   if (request.headers['content-type']?.split(';')[0] !== 'application/json') {
     throw new RequestError(415, 'La solicitud debe usar JSON.');
   }
@@ -39,7 +42,7 @@ async function readJSON(request) {
   let size = 0;
   for await (const chunk of request.iterator({ destroyOnReturn: false })) {
     size += chunk.length;
-    if (size > maxBytes) {
+    if (size > limit) {
       request.resume();
       throw new RequestError(413, 'El historial excede el tamaño admitido.');
     }
@@ -133,6 +136,7 @@ export function createThreadMapServer({
   geminiPlatformKey = process.env.GEMINI_API_KEY?.trim(),
   geminiModel = process.env.GEMINI_MODEL?.trim() || 'gemini-3.1-flash-lite',
   fetchProvider = fetch,
+  accounts,
 } = {}) {
   const providers = {
     openai: { name: 'OpenAI', platformKey, model },
@@ -142,22 +146,58 @@ export function createThreadMapServer({
     id, { platformAvailable: Boolean(config.platformKey), model: config.model },
   ]));
   let platformInFlight = 0;
-  return createServer({ requestTimeout: 30_000 }, async (request, response) => {
+  let accountPromise;
+  const getAccounts = () => accountPromise ||= Promise.resolve(accounts || createAccounts());
+  const server = createServer({ requestTimeout: 30_000 }, async (request, response) => {
     try {
       // Accept loopback hosts only, including when the browser sends no Origin.
       if (!/^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(request.headers.host ?? '')) {
         throw new RequestError(403, 'Acceso local requerido.');
       }
       const path = new URL(request.url, 'http://localhost').pathname;
-      if (request.method === 'GET' && path === '/api/config') {
-        return sendJSON(response, 200, { ...publicConfig.openai, providers: publicConfig });
-      }
-      if (request.method === 'POST' && path === '/api/chat') {
+      if (!['GET', 'HEAD'].includes(request.method)) {
         const origin = request.headers.origin;
         if (origin && origin !== `http://${request.headers.host}` && origin !== `https://${request.headers.host}`) {
           throw new RequestError(403, 'Origen no permitido.');
         }
-
+        if (request.headers['sec-fetch-site'] === 'cross-site') throw new RequestError(403, 'Origen no permitido.');
+      }
+      if (path.startsWith('/api/auth/')) {
+        // Never trust a client-provided IP header for authentication rate limits.
+        request.headers['x-threadmap-ip'] = request.socket?.remoteAddress || '127.0.0.1';
+        if (!['GET', 'HEAD'].includes(request.method)) request.body = await readJSON(request, 16_384);
+        if (path === '/api/auth/sign-up/email' && request.body) {
+          if (typeof request.body.name !== 'string' || !request.body.name.trim() || request.body.name.length > 80) {
+            throw new RequestError(400, 'Introduce un nombre de hasta 80 caracteres.');
+          }
+          request.body.name = request.body.name.trim();
+        }
+        for (const [name, value] of Object.entries(securityHeaders)) response.setHeader(name, value);
+        return await (await getAccounts()).authHandler(request, response);
+      }
+      if (request.method === 'GET' && path === '/api/me') {
+        const session = await (await getAccounts()).getSession(request);
+        const user = session ? { id: session.user.id, name: session.user.name, email: session.user.email } : null;
+        return sendJSON(response, 200, { user });
+      }
+      let user;
+      if (path === '/api/workspace' || path === '/api/chat') {
+        const session = await (await getAccounts()).getSession(request);
+        if (!session) throw new RequestError(401, 'Inicia sesión para continuar.');
+        user = session.user;
+      }
+      if (path === '/api/workspace' && request.method === 'GET') {
+        return sendJSON(response, 200, (await getAccounts()).loadWorkspace(user.id));
+      }
+      if (path === '/api/workspace' && request.method === 'PUT') {
+        const body = await readJSON(request, 8_100_000);
+        const revision = (await getAccounts()).saveWorkspace(user.id, body?.revision, body?.workspace);
+        return sendJSON(response, 200, { revision });
+      }
+      if (request.method === 'GET' && path === '/api/config') {
+        return sendJSON(response, 200, { ...publicConfig.openai, providers: publicConfig });
+      }
+      if (request.method === 'POST' && path === '/api/chat') {
         const body = await readJSON(request);
         const mode = body?.mode;
         if (mode !== 'platform' && mode !== 'personal') {
@@ -221,11 +261,14 @@ export function createThreadMapServer({
       }
     }
   });
+  server.once('close', () => { if (accountPromise) accountPromise.then((store) => store.close?.()).catch(() => {}); });
+  return server;
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   const port = Number(process.env.PORT || 3000);
-  createThreadMapServer().listen(port, '127.0.0.1', () => {
+  const accounts = await createAccounts();
+  createThreadMapServer({ accounts }).listen(port, '127.0.0.1', () => {
     console.log(`ThreadMap disponible en http://127.0.0.1:${port}`);
   });
 }

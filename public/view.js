@@ -1,6 +1,9 @@
 import { branchPreview, branchTitle, rankChildren } from './threads.js';
 
 const shapes = {
+  'panel-right-open': '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16m-5-7-3-3 3-3"/>',
+  'panel-right-close': '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16m-8-7 3-3-3-3"/>',
+  logout: '<path d="M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4m6-13 5 5-5 5m-7-5h12"/>',
   brand: '<path d="M12 2.3C10.6 7.8 6.7 12 2 13c4.8.6 8.8 3.9 10 8.7 1.2-4.8 5.2-8.1 10-8.7-4.7-1-8.6-5.2-10-10.7Zm0 0v19.4" stroke-width="1.05"/><g fill="currentColor" stroke="none"><circle cx="12" cy="2.3" r="1.65"/><circle cx="2" cy="13" r="1.25"/><circle cx="22" cy="13" r="1.25"/><circle cx="12" cy="15.3" r="1.25"/><circle cx="12" cy="21.7" r="1.35"/></g>',
   branch: '<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="6" r="2"/><path d="M6 7v10m0-5h6a6 6 0 0 0 6-4"/>',
   network: '<rect x="8.5" y="3" width="7" height="5" rx="1.3"/><rect x="3" y="16" width="6" height="5" rx="1.3"/><rect x="15" y="16" width="6" height="5" rx="1.3"/><path d="M12 8v4m-6 4v-2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/>',

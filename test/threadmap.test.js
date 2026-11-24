@@ -2,8 +2,13 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { Readable } from 'node:stream';
 import test from 'node:test';
-import { createThreadMapServer } from '../server.js';
+import { createThreadMapServer as createServer } from '../server.js';
 import { branchPreview, contextFor, createBranch, createThread, message, modelInput, persistentWorkspace, rankChildren } from '../public/threads.js';
+
+// Provider unit tests use an authenticated session; real cookies are covered in accounts.test.js.
+function createThreadMapServer(options = {}) {
+  return createServer({ accounts: { getSession: async () => ({ user: { id: 'provider-test' } }) }, ...options });
+}
 
 test('a branch inherits up to its origin, even after later turns in other branches', () => {
   const thread = createThread();

@@ -1,5 +1,10 @@
-import { branchTitle, contextFor, createBranch, createThread, lineage, message, modelInput, persistentWorkspace, seedThreads } from './threads.js';
+import { branchTitle, contextFor, createBranch, createThread, lineage, message, modelInput, persistentWorkspace } from './threads.js';
 import { action, createMap, el, responseText, revealResponse, setIcon } from './view.js';
+import { loadAccount, signOut } from './account.js';
+import { searchConversations } from './search.js';
+
+document.querySelectorAll('[data-icon]').forEach((element) => setIcon(element, element.dataset.icon));
+const account = await loadAccount();
 
 const byId = (id) => document.getElementById(id);
 const workspace = byId('workspace');
@@ -13,12 +18,12 @@ const settingsForm = byId('settings-form');
 const personalInput = byId('personal-key');
 const ask = byId('ask-selection');
 const search = byId('history-search');
+const searchDialog = byId('conversation-search');
 const mapPanel = byId('map-panel');
 const mapToggle = byId('map-toggle');
 const temporaryToggle = byId('temporary-toggle');
 const narrowMap = matchMedia('(max-width: 1050px)');
 const narrowSidebar = matchMedia('(max-width: 730px)');
-const storeKey = 'threadmap.workspace.v1';
 const requests = new Map();
 const typing = new Set();
 const errors = new Map();
@@ -42,11 +47,9 @@ function writePreference(key, value) {
 }
 
 function initialState() {
-  try {
-    const saved = JSON.parse(readPreference(storeKey));
-    if (saved?.threads?.length && saved.threads.every((thread) => thread.branches?.[thread.rootId])) return saved;
-  } catch { /* Start the workspace with the examples if its saved data cannot be read. */ }
-  const threads = seedThreads();
+  const saved = account.workspace;
+  if (saved?.threads?.length) return saved;
+  const threads = [createThread()];
   return { threads, threadId: threads[0].id, branchId: threads[0].rootId };
 }
 
@@ -59,12 +62,13 @@ let connection = {
   key: '',
 };
 let theme = readPreference('threadmap.appearance', 'dark');
+const autoOpenMapKey = `threadmap.autoOpenMap.${account.user.id}`;
+let autoOpenMap = readPreference(autoOpenMapKey, 'true') !== 'false';
 let mapVisible = !narrowMap.matches && Object.keys(currentThread().branches).length > 1;
 let sidebarVisible = !narrowSidebar.matches && readPreference('threadmap.sidebar') !== 'collapsed';
 let expanded = false;
 let dockedMapView = null;
 
-document.querySelectorAll('[data-icon]').forEach((element) => setIcon(element, element.dataset.icon));
 const graph = createMap(byId('map-stage'), byId('map-scene'), byId('map-lines'), byId('map-nodes'), byId('zoom-level'), byId('branch-preview'), (id) => {
   navigate(state.threadId, id);
   if (expanded) setMapExpanded(false);
@@ -97,15 +101,105 @@ function notify(text) {
   toastTimer = setTimeout(() => { toast.hidden = true; }, 3000);
 }
 
+let revision = account.revision;
+let savedSnapshot = JSON.stringify(account.workspace);
+let pendingSnapshot = null;
+let saveInFlight = null;
+let saveTimer;
+let saveConflict = false;
+
 function save() {
-  if (!writePreference(storeKey, JSON.stringify(persistentWorkspace(state)))) notify('El navegador no pudo guardar los cambios de esta sesión.');
+  const snapshot = JSON.stringify(persistentWorkspace(state));
+  if (snapshot === savedSnapshot && !saveInFlight) {
+    pendingSnapshot = null;
+    clearTimeout(saveTimer);
+    byId('account-status').textContent = 'Guardado';
+    return;
+  }
+  pendingSnapshot = snapshot;
+  if (saveConflict) { byId('account-status').textContent = 'Cambios sin guardar'; return; }
+  byId('account-status').textContent = 'Guardando…';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { flushSave().catch(() => {}); }, 180);
 }
+
+async function flushSave() {
+  clearTimeout(saveTimer);
+  if (saveInFlight) { await saveInFlight; return flushSave(); }
+  if (!pendingSnapshot) return;
+  if (saveConflict) throw new Error('Hay cambios en otra pestaña. Descarga tus cambios antes de recargar.');
+  const snapshot = pendingSnapshot;
+  pendingSnapshot = null;
+  saveInFlight = (async () => {
+    try {
+      const response = await fetch('/api/workspace', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ revision, workspace: JSON.parse(snapshot) }),
+      });
+      const data = await response.json();
+      if (response.status === 409) saveConflict = true;
+      if (!response.ok) throw new Error(data.error || 'No se pudo guardar tu historial.');
+      revision = data.revision;
+      savedSnapshot = snapshot;
+      byId('account-status').textContent = pendingSnapshot ? 'Guardando…' : 'Guardado';
+      byId('sync-alert').hidden = true;
+    } catch (error) {
+      pendingSnapshot ||= snapshot;
+      byId('account-status').textContent = 'Cambios sin guardar';
+      byId('sync-message').textContent = error.message;
+      byId('sync-retry').hidden = saveConflict;
+      byId('sync-alert').hidden = false;
+      throw error;
+    } finally { saveInFlight = null; }
+  })();
+  await saveInFlight;
+  if (pendingSnapshot) return flushSave();
+}
+
+byId('sync-retry').onclick = () => { flushSave().catch(() => {}); };
+byId('sync-reload').onclick = () => location.reload();
+byId('sync-export').onclick = () => {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(persistentWorkspace(state), null, 2)], { type: 'application/json' }));
+  const link = document.createElement('a');
+  link.href = url; link.download = 'threadmap-mis-conversaciones.json'; link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+window.addEventListener('online', () => { flushSave().catch(() => {}); });
+window.addEventListener('beforeunload', (event) => {
+  if (pendingSnapshot || saveInFlight || requests.size) { event.preventDefault(); event.returnValue = ''; }
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) flushSave().catch(() => {}); });
+byId('logout').onclick = async () => {
+  byId('logout').disabled = true;
+  try {
+    // Do not discard a response or an unsaved workspace while switching accounts.
+    if (requests.size) throw new Error('Espera a que termine la respuesta antes de cerrar sesión.');
+    await flushSave();
+    await signOut();
+  } catch (error) { notify(error.message); byId('logout').disabled = false; }
+};
+
+try {
+  const legacy = JSON.parse(readPreference('threadmap.workspace.v1'));
+  if (legacy?.threads?.length && legacy.threads.every((thread) => thread.branches?.[thread.rootId])) {
+    byId('import-local').hidden = false;
+    byId('import-local').onclick = () => {
+      if (!confirm(`¿Importar las conversaciones de este navegador a la cuenta ${account.user.email}?`)) return;
+      const existing = new Set(state.threads.map((thread) => thread.id));
+      const imported = legacy.threads.filter((thread) => !thread.temporary && !existing.has(thread.id));
+      if (!imported.length) return notify('Estas conversaciones ya están en tu cuenta.');
+      state.threads.unshift(...structuredClone(imported));
+      navigate(imported[0].id, imported[0].rootId, { fit: true });
+      notify('Historial importado a tu cuenta');
+      byId('import-local').hidden = true;
+    };
+  }
+} catch { /* Keep an unreadable legacy workspace untouched. */ }
 
 function renderHistory() {
   const history = byId('history');
   history.replaceChildren();
-  const query = search.value.trim().toLocaleLowerCase('es');
-  const list = state.threads.filter((thread) => !thread.temporary && thread.title.toLocaleLowerCase('es').includes(query))
+  const list = state.threads.filter((thread) => !thread.temporary)
     .sort((first, second) => second.updatedAt.localeCompare(first.updatedAt));
   const today = new Date().toDateString();
   const groups = [
@@ -134,10 +228,84 @@ function renderHistory() {
   if (!list.length) history.append(el('p', 'history-no-results', 'No se encontraron conversaciones.'));
 }
 
+function renderSearch() {
+  const results = searchConversations(state.threads, search.value);
+  const visible = results.slice(0, 100);
+  const container = byId('search-results');
+  container.replaceChildren();
+  const hasQuery = Boolean(search.value.trim());
+  byId('search-status').textContent = hasQuery
+    ? `${results.length} ${results.length === 1 ? 'rama con coincidencias' : 'ramas con coincidencias'}${results.length > visible.length ? ' · Mostrando las primeras 100' : ''}`
+    : 'Conversaciones recientes';
+  if (!results.length) {
+    const empty = el('div', 'search-empty');
+    const glyph = el('span');
+    setIcon(glyph, 'search');
+    empty.append(glyph, el('strong', '', hasQuery ? 'No encontramos coincidencias' : 'Tu espacio empieza aquí'),
+      el('p', '', hasQuery ? 'Prueba con otra palabra o una frase más corta.' : 'Tus conversaciones aparecerán aquí cuando empieces a explorar.'));
+    container.append(empty);
+  }
+  let threadId = null;
+  let group;
+  for (const result of visible) {
+    if (threadId !== result.threadId) {
+      threadId = result.threadId;
+      group = el('section', 'search-group');
+      const title = el('h3', 'search-group-title');
+      const glyph = el('span');
+      setIcon(glyph, 'chat');
+      title.append(glyph, el('span', '', result.threadTitle));
+      group.append(title);
+      container.append(group);
+    }
+    const button = el('button', 'search-result');
+    button.type = 'button';
+    const heading = el('span', 'search-result-heading');
+    const glyph = el('span');
+    setIcon(glyph, result.path.length === 1 ? 'chat' : 'branch');
+    heading.append(glyph, el('strong', '', result.branchTitle));
+    const path = el('span', 'search-result-path', result.path.join(' › '));
+    path.title = result.path.join(' › ');
+    const excerpt = el('span', 'search-result-excerpt');
+    for (const part of result.excerpt) excerpt.append(el(part.match ? 'mark' : 'span', '', part.text));
+    button.append(heading, path, excerpt);
+    if (result.messageCount) button.append(el('small', 'search-result-count', `${result.messageCount} ${result.messageCount === 1 ? 'mensaje con coincidencias' : 'mensajes con coincidencias'}`));
+    button.onclick = () => {
+      searchDialog.close();
+      navigate(result.threadId, result.branchId);
+      if (narrowSidebar.matches) showSidebar(false);
+      const row = result.messageId ? byId(`message-${result.messageId}`) : messages;
+      if (row) {
+        row.tabIndex = -1;
+        row.focus({ preventScroll: true });
+        row.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+        if (result.messageId) {
+          row.classList.remove('search-arrival');
+          void row.offsetWidth;
+          row.classList.add('search-arrival');
+        }
+      }
+    };
+    group.append(button);
+  }
+}
+
+function openSearch() {
+  dismissSelection();
+  graph.hidePreview();
+  search.value = '';
+  renderSearch();
+  searchDialog.showModal();
+  byId('search-toggle').setAttribute('aria-expanded', 'true');
+  search.focus();
+}
+
 function renderHeader() {
   const thread = currentThread();
   const branch = currentBranch();
-  temporaryToggle.hidden = Boolean(thread.branches[thread.rootId].messages.length);
+  const started = Boolean(thread.branches[thread.rootId].messages.length);
+  temporaryToggle.hidden = started && !thread.temporary;
+  temporaryToggle.disabled = started;
   temporaryToggle.setAttribute('aria-pressed', String(Boolean(thread.temporary)));
   byId('temporary-note').hidden = !thread.temporary;
   const title = byId('chat-title');
@@ -229,9 +397,11 @@ function renderMessage(entry) {
     if (isFork) {
       const label = el('span', 'fork-label');
       setIcon(label, 'branch');
-      label.append('Nueva rama');
+      label.setAttribute('aria-label', 'Respuesta a un fragmento');
       bubble.append(label);
-      if (entry.reference) bubble.append(el('blockquote', 'user-reference', entry.reference));
+      const origin = currentThread().branches[entry.branchId];
+      const source = currentThread().branches[origin.parentId].messages.find((item) => item.id === origin.originMessageId);
+      bubble.append(el('blockquote', 'user-reference', entry.reference || source?.content || ''));
     }
     bubble.append(el('p', '', entry.content));
     userContent.append(bubble, action('Crear rama desde la pregunta', 'branch', branchAction, 'icon-button small user-action'));
@@ -268,7 +438,7 @@ function renderChat(answerId = null) {
       const label = el('summary');
       const glyph = el('span');
       setIcon(glyph, 'layers');
-      label.append(glyph, el('span', '', 'Contexto heredado'), el('small', '', `${inherited.length} mensajes`));
+      label.append(glyph, el('span', '', 'Contexto heredado'), el('small', '', `${inherited.length} ${inherited.length === 1 ? 'mensaje' : 'mensajes'}`));
       details.append(label, ...inherited.map(renderMessage));
       details.addEventListener('toggle', () => {
         if (details.open) shownContext.add(selectedId);
@@ -450,13 +620,13 @@ function sendQuestion(event) {
   thread.updatedAt = new Date().toISOString();
   navigate(thread.id, branch.id, { end: true, fit: Boolean(source) });
   if (source) {
-    showMap(true);
+    if (autoOpenMap) showMap(true);
     mapToggle.classList.remove('map-flash');
     void mapToggle.offsetWidth;
     mapToggle.classList.add('map-flash');
   }
   reply(thread, branch);
-  (source && narrowMap.matches ? mapToggle : prompt).focus({ preventScroll: true });
+  (source && mapVisible && narrowMap.matches ? mapToggle : prompt).focus({ preventScroll: true });
 }
 
 function dismissSelection() {
@@ -522,6 +692,7 @@ function setKeyVisibility(visible) {
 }
 
 function openSettings() {
+  byId('auto-open-map').checked = autoOpenMap;
   const { provider, mode, key } = connection;
   settingsForm.elements.provider.value = provider;
   settingsForm.elements.mode.value = providerConfig[provider]?.platformAvailable ? mode : 'personal';
@@ -544,6 +715,8 @@ function applyTheme() {
 }
 
 function updatePanels() {
+  const previousButton = mapToggle.getBoundingClientRect();
+  mapToggle.getAnimations().forEach((animation) => animation.cancel());
   workspace.classList.toggle('map-hidden', !mapVisible);
   workspace.classList.toggle('sidebar-hidden', !sidebarVisible);
   workspace.classList.toggle('map-expanded', mapVisible && expanded);
@@ -555,21 +728,33 @@ function updatePanels() {
   byId('sidebar-close').inert = !sidebarVisible;
   byId('sidebar-open').inert = sidebarVisible;
   document.querySelector('.brand').inert = !sidebarVisible;
-  const overlayOpen = !expanded && (sidebarOverlay || mapOverlay);
+  const overlayOpen = sidebarOverlay || mapOverlay;
   workspace.classList.toggle('scrim-visible', overlayOpen);
   scrim.inert = !overlayOpen;
   chat.inert = sidebarOverlay || mapOverlay;
 
-  const slot = byId(mapOverlay ? 'panel-map-slot' : 'chat-map-slot');
+  mapPanel.setAttribute('role', mapOverlay ? 'dialog' : 'complementary');
+  if (mapOverlay) mapPanel.setAttribute('aria-modal', 'true');
+  else mapPanel.removeAttribute('aria-modal');
+  const slot = byId(mapVisible ? 'panel-map-slot' : 'chat-map-slot');
   if (mapToggle.parentElement !== slot) {
     const focused = document.activeElement === mapToggle;
     slot.append(mapToggle);
     if (focused) mapToggle.focus({ preventScroll: true });
   }
+  const nextButton = mapToggle.getBoundingClientRect();
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches && previousButton.width &&
+      (previousButton.x !== nextButton.x || previousButton.y !== nextButton.y)) {
+    mapToggle.animate([
+      { transform: `translate(${previousButton.x - nextButton.x}px, ${previousButton.y - nextButton.y}px)` },
+      { transform: 'translate(0, 0)' },
+    ], { duration: 340, easing: 'cubic-bezier(.22,.85,.25,1)' });
+  }
   const mapLabel = mapVisible ? 'Ocultar mapa de conversación' : 'Mostrar mapa de conversación';
   mapToggle.title = `${mapLabel} (Ctrl+Y)`;
   mapToggle.setAttribute('aria-label', mapLabel);
   mapToggle.setAttribute('aria-expanded', String(mapVisible));
+  setIcon(byId('map-toggle-hint'), mapVisible ? 'panel-right-close' : 'panel-right-open');
   byId('sidebar-open').setAttribute('aria-expanded', String(sidebarVisible));
   byId('sidebar-close').setAttribute('aria-expanded', String(sidebarVisible));
   byId('map-expand').setAttribute('aria-pressed', String(expanded));
@@ -595,9 +780,11 @@ function setMapExpanded(value) {
   updatePanels();
   if (value) {
     graph.fit();
+    mapToggle.focus({ preventScroll: true });
   } else {
     graph.restoreView(dockedMapView);
     dockedMapView = null;
+    byId('map-expand').focus({ preventScroll: true });
   }
 }
 
@@ -640,13 +827,32 @@ temporaryToggle.onclick = () => {
   renderHistory();
   save();
 };
-byId('search-toggle').onclick = () => {
-  search.hidden = !search.hidden;
-  byId('search-toggle').setAttribute('aria-expanded', String(!search.hidden));
-  if (search.hidden) { search.value = ''; renderHistory(); }
-  else search.focus();
-};
-search.addEventListener('input', renderHistory);
+byId('search-toggle').onclick = openSearch;
+byId('search-close').onclick = () => searchDialog.close();
+search.addEventListener('input', renderSearch);
+searchDialog.addEventListener('close', () => byId('search-toggle').setAttribute('aria-expanded', 'false'));
+searchDialog.addEventListener('click', (event) => {
+  const box = searchDialog.getBoundingClientRect();
+  if (event.target === searchDialog && (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom)) searchDialog.close();
+});
+searchDialog.addEventListener('keydown', (event) => {
+  const results = [...byId('search-results').querySelectorAll('.search-result')];
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    if (!results.length) return;
+    event.preventDefault();
+    const current = results.indexOf(document.activeElement);
+    const index = current < 0 ? (event.key === 'ArrowDown' ? 0 : results.length - 1)
+      : (current + (event.key === 'ArrowDown' ? 1 : -1) + results.length) % results.length;
+    results[index].focus({ preventScroll: true });
+    results[index].scrollIntoView({ block: 'nearest' });
+  } else if (event.key === 'Enter' && document.activeElement === search) {
+    event.preventDefault(); results[0]?.click();
+  }
+});
+byId('auto-open-map').addEventListener('change', (event) => {
+  autoOpenMap = event.target.checked;
+  writePreference(autoOpenMapKey, String(autoOpenMap));
+});
 byId('theme-control').onclick = () => {
   theme = theme === 'dark' ? 'light' : 'dark';
   writePreference('threadmap.appearance', theme);
@@ -732,13 +938,30 @@ function closeOverlay() {
 }
 scrim.onclick = closeOverlay;
 document.addEventListener('keydown', (event) => {
-  if (settings.open || event.isComposing) return;
+  if (settings.open || searchDialog.open || event.isComposing) return;
+  if (event.key === 'Tab' && mapVisible && (expanded || narrowMap.matches)) {
+    const controls = [...mapPanel.querySelectorAll('button:not(:disabled), [tabindex="0"]')].filter((element) => element.getClientRects().length && !element.closest('[hidden]'));
+    const first = controls[0];
+    const last = controls.at(-1);
+    if (event.shiftKey && (document.activeElement === first || !mapPanel.contains(document.activeElement))) {
+      event.preventDefault(); last?.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !mapPanel.contains(document.activeElement))) {
+      event.preventDefault(); first?.focus();
+    }
+  }
   if (event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey && event.key.toLowerCase() === 'y') {
     event.preventDefault();
     if (!event.repeat) {
       const focusMap = narrowMap.matches || expanded;
       showMap(!mapVisible);
       if (focusMap) mapToggle.focus({ preventScroll: true });
+    }
+  } else if (event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey && event.key.toLowerCase() === 'b') {
+    event.preventDefault();
+    if (!event.repeat) {
+      if (!narrowSidebar.matches) writePreference('threadmap.sidebar', sidebarVisible ? 'collapsed' : 'expanded');
+      showSidebar(!sidebarVisible);
+      byId(sidebarVisible ? 'sidebar-close' : 'sidebar-open').focus({ preventScroll: true });
     }
   } else if (event.key === 'Escape') closeOverlay();
 });
