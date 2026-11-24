@@ -184,10 +184,13 @@ export function createThreadMapServer({
         return sendJSON(response, 200, { user });
       }
       let user;
-      if (path === '/api/workspace' || path === '/api/chat') {
+      if (path === '/api/workspace' || path === '/api/chat' || path === '/api/usage') {
         const session = await (await getAccounts()).getSession(request);
         if (!session) throw new RequestError(401, 'Inicia sesión para continuar.');
         user = session.user;
+      }
+      if (path === '/api/usage' && request.method === 'GET') {
+        return sendJSON(response, 200, { usage: (await getAccounts()).getUsage(user.id) });
       }
       if (path === '/api/workspace' && request.method === 'GET') {
         return sendJSON(response, 200, (await getAccounts()).loadWorkspace(user.id));
@@ -224,6 +227,14 @@ export function createThreadMapServer({
         }
         const cancellation = new AbortController();
         response.once('close', () => cancellation.abort());
+        const store = await getAccounts();
+        if (mode === 'platform' && !store.reserveMessage(user.id)) {
+          return sendJSON(response, 403, {
+            error: 'Usaste tus 5 mensajes gratuitos. Añade tu propia API key en Configuración para continuar.',
+            code: 'FREE_MESSAGES_EXHAUSTED', usage: store.getUsage(user.id),
+          });
+        }
+        let completed = false;
         if (mode === 'platform') platformInFlight++;
         try {
           const apiRequest = requestFor(provider, config.model, apiKey, input);
@@ -241,16 +252,28 @@ export function createThreadMapServer({
           if (!result.answer.trim()) {
             throw new RequestError(502, `${config.name} devolvió una respuesta vacía. Inténtalo de nuevo.`);
           }
-          return sendJSON(response, 200, result);
+          completed = true;
+          return sendJSON(response, 200, { ...result, usage: store.getUsage(user.id) });
         } catch (error) {
           if (error instanceof RequestError) throw error;
           if (error.name === 'TimeoutError') throw new RequestError(504, `${config.name} tardó demasiado en responder. Puedes reintentar.`);
           throw new RequestError(502, `No se pudo conectar con ${config.name}. Puedes reintentar.`);
         } finally {
-          if (mode === 'platform') platformInFlight--;
+          if (mode === 'platform') {
+            platformInFlight--;
+            if (!completed) store.refundMessage(user.id);
+          }
         }
       }
       const asset = Object.hasOwn(assets, path) ? assets[path] : null;
+      if (['GET', 'HEAD'].includes(request.method) && /^\/vendor\/(?:katex\/(?:katex\.mjs|katex\.min\.css|fonts\/[A-Za-z0-9_-]+\.(?:woff2?|ttf))|highlight\/highlight\.js)$/.test(path)) {
+        const type = path.endsWith('.css') ? 'text/css' : /\.m?js$/.test(path) ? 'text/javascript' : path.endsWith('.woff2') ? 'font/woff2' : path.endsWith('.woff') ? 'font/woff' : 'font/ttf';
+        try {
+          const bytes = await readFile(new URL(`./public${path}`, import.meta.url));
+          response.writeHead(200, { ...securityHeaders, 'Content-Type': type });
+          return response.end(request.method === 'HEAD' ? undefined : bytes);
+        } catch (error) { if (error.code !== 'ENOENT') throw error; }
+      }
       if (asset && ['GET', 'HEAD'].includes(request.method)) {
         const [filename, type] = asset;
         const bytes = await readFile(new URL(`./public/${filename}`, import.meta.url));

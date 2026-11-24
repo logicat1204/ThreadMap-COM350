@@ -7,7 +7,13 @@ import { branchPreview, contextFor, createBranch, createThread, message, modelIn
 
 // Provider unit tests use an authenticated session; real cookies are covered in accounts.test.js.
 function createThreadMapServer(options = {}) {
-  return createServer({ accounts: { getSession: async () => ({ user: { id: 'provider-test' } }) }, ...options });
+  let used = 0;
+  return createServer({ accounts: {
+    getSession: async () => ({ user: { id: 'provider-test' } }),
+    getUsage: () => ({ limit: 5, used, remaining: 5 - used }),
+    reserveMessage: () => used < 5 && ++used > 0,
+    refundMessage: () => { used--; },
+  }, ...options });
 }
 
 test('a branch inherits up to its origin, even after later turns in other branches', () => {
@@ -136,7 +142,7 @@ test('platform and personal credentials reach OpenAI only in their own modes', a
   const platform = await callRoute(server, { authorization, body: { mode: 'platform', messages } });
   const personal = await callRoute(server, { authorization, body: { mode: 'personal', messages } });
   assert.deepEqual(platform, personal);
-  assert.deepEqual(personal, { status: 200, data: { answer: 'Una respuesta', incomplete: false } });
+  assert.deepEqual(personal, { status: 200, data: { answer: 'Una respuesta', incomplete: false, usage: { limit: 5, used: 1, remaining: 4 } } });
   assert.deepEqual(requests.map((request) => request.authorization), ['Bearer fixture-platform', authorization]);
   assert.equal(requests[0].url, 'https://api.openai.com/v1/responses');
   assert.equal(requests[0].input.instructions, 'responde de forma directa, breve y muy tecnica.');
@@ -184,7 +190,7 @@ test('Gemini receives the selected key and ordered branch history in its native 
   const authorization = 'Bearer fixture-gemini-personal';
   for (const mode of ['platform', 'personal']) {
     const result = await callRoute(server, { authorization, body: { provider: 'gemini', mode, messages: history } });
-    assert.deepEqual(result, { status: 200, data: { answer: 'Respuesta de Gemini.', incomplete: true } });
+    assert.deepEqual(result, { status: 200, data: { answer: 'Respuesta de Gemini.', incomplete: true, usage: { limit: 5, used: 1, remaining: 4 } } });
   }
   assert.deepEqual(requests.map((request) => request.headers['x-goog-api-key']), ['fixture-gemini-platform', 'fixture-gemini-personal']);
   for (const request of requests) {

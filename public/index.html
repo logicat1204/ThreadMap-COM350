@@ -6,6 +6,7 @@
   <meta name="description" content="Conversaciones con IA que puedes explorar en distintas ramas.">
   <title>ThreadMap</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2301605F'%3E%3Cpath d='M12 2.3C10.6 7.8 6.7 12 2 13c4.8.6 8.8 3.9 10 8.7 1.2-4.8 5.2-8.1 10-8.7-4.7-1-8.6-5.2-10-10.7Zm0 0v19.4' fill='none' stroke='%2301605F' stroke-width='1.2'/%3E%3Ccircle cx='12' cy='2.3' r='1.65'/%3E%3Ccircle cx='2' cy='13' r='1.25'/%3E%3Ccircle cx='22' cy='13' r='1.25'/%3E%3Ccircle cx='12' cy='15.3' r='1.25'/%3E%3Ccircle cx='12' cy='21.7' r='1.35'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/vendor/katex/katex.min.css">
   <link rel="stylesheet" href="/style.css">
   <script type="module" src="/app.js"></script>
 </head>
@@ -19,7 +20,8 @@
       <form id="auth-form" class="auth-form" hidden>
         <label id="auth-name-field" hidden>Nombre<input id="auth-name" name="name" autocomplete="name" maxlength="80"></label>
         <label>Correo electrónico<input id="auth-email" name="email" type="email" autocomplete="username" maxlength="254" required placeholder="tu@correo.com"></label>
-        <label>Contraseña<input id="auth-password" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required placeholder="Al menos 8 caracteres"></label>
+        <label for="auth-password">Contraseña</label>
+        <div class="auth-password-entry"><input id="auth-password" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required placeholder="Al menos 8 caracteres"><button type="button" class="icon-button" id="reveal-password" data-icon="eye" title="Mostrar contraseña" aria-label="Mostrar contraseña" aria-pressed="false" aria-controls="auth-password"></button></div>
         <p class="auth-error" id="auth-error" role="alert" hidden></p>
         <button class="primary-button auth-submit" id="auth-submit" type="submit">Iniciar sesión</button>
         <p class="auth-switch"><span id="auth-switch-label">¿Primera vez aquí?</span> <button type="button" id="auth-switch">Crear una cuenta</button></p>
@@ -135,14 +137,15 @@
       <div class="settings-heading"><span class="map-mark" data-icon="settings"></span><div><h2 id="settings-title">Configuración</h2><p>Conexión de IA y preferencias de tu espacio.</p></div><button type="button" class="icon-button" id="settings-close" data-icon="x" aria-label="Cerrar configuración" title="Cerrar configuración"></button></div>
       <fieldset class="provider-options">
         <legend>Proveedor</legend>
-        <label class="mode-option"><input type="radio" name="provider" value="openai" checked><strong>OpenAI</strong></label>
-        <label class="mode-option"><input type="radio" name="provider" value="gemini"><strong>Gemini</strong></label>
+        <label class="mode-option"><input type="radio" name="provider" value="openai"><strong>OpenAI</strong></label>
+        <label class="mode-option"><input type="radio" name="provider" value="gemini" checked><strong>Gemini</strong></label>
       </fieldset>
       <fieldset>
         <legend>Modo de conexión</legend>
-        <label class="mode-option"><input type="radio" name="mode" value="platform"><span><strong>Clave de la plataforma</strong><small id="platform-note"></small></span></label>
+        <label class="mode-option"><input type="radio" name="mode" value="platform" checked><span><strong>Clave de la plataforma</strong><small id="platform-note"></small></span></label>
         <label class="mode-option"><input type="radio" name="mode" value="personal"><span><strong>Mi propia clave</strong><small id="personal-note"></small></span></label>
       </fieldset>
+      <p class="usage-note" id="usage-note" role="status"></p>
       <div class="personal-fields" id="personal-fields" hidden>
         <label for="personal-key" id="personal-key-label">Clave API de OpenAI</label>
         <div class="key-entry"><input type="password" id="personal-key" placeholder="sk-…" maxlength="512" autocomplete="off" spellcheck="false"><button type="button" class="icon-button" id="reveal-key" data-icon="eye" title="Mostrar clave" aria-label="Mostrar clave"></button></div>

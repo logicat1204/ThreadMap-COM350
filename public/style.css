@@ -382,6 +382,29 @@ h1, h2, h3, p { margin: 0; }
 .response-text code { font: .91em/1.5 "Cascadia Code", "Consolas", monospace; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 1px 4px; }
 .response-text pre { max-width: 100%; overflow: auto; background: var(--surface); border: 1px solid var(--line); padding: 12px; border-radius: 8px; }
 .response-text pre code { background: none; border: 0; padding: 0; }
+.response-text .math-expression { white-space: normal; overflow-wrap: normal; }
+.response-text .math-display { overflow-x: auto; overflow-y: hidden; padding: 5px 0; max-width: 100%; }
+.response-text .katex { font-size: 1.12em; }
+.response-text .katex-display { margin: .6em 0; }
+.response-text .code-block { overflow: hidden; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); }
+.code-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+.code-copy { display: flex; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--muted); font-size: 11px; padding: 3px 0 3px 8px; }
+.code-copy:hover { color: var(--accent); }
+.code-copy svg { width: 14px; height: 14px; }
+.response-text .code-block pre { margin: 0; border: 0; border-radius: 0; padding: 14px; line-height: 1.6; }
+.response-text pre code.hljs { display: block; white-space: pre; overflow-wrap: normal; color: var(--ink); font-size: 12px; tab-size: 2; }
+.hljs-comment, .hljs-quote { color: #6b7b79; font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal { color: #963caf; }
+.hljs-string, .hljs-regexp, .hljs-addition { color: #217448; }
+.hljs-number, .hljs-symbol, .hljs-attr { color: #98601d; }
+.hljs-title, .hljs-section, .hljs-built_in, .hljs-type { color: #175eaf; }
+.hljs-variable, .hljs-template-variable, .hljs-tag, .hljs-name, .hljs-deletion { color: #b13946; }
+[data-theme="dark"] .hljs-comment, [data-theme="dark"] .hljs-quote { color: #8caaa4; }
+[data-theme="dark"] .hljs-keyword, [data-theme="dark"] .hljs-selector-tag, [data-theme="dark"] .hljs-literal { color: #d9a0ed; }
+[data-theme="dark"] .hljs-string, [data-theme="dark"] .hljs-regexp, [data-theme="dark"] .hljs-addition { color: #9bcea6; }
+[data-theme="dark"] .hljs-number, [data-theme="dark"] .hljs-symbol, [data-theme="dark"] .hljs-attr { color: #e8be89; }
+[data-theme="dark"] .hljs-title, [data-theme="dark"] .hljs-section, [data-theme="dark"] .hljs-built_in, [data-theme="dark"] .hljs-type { color: #91bff4; }
+[data-theme="dark"] .hljs-variable, [data-theme="dark"] .hljs-template-variable, [data-theme="dark"] .hljs-tag, [data-theme="dark"] .hljs-name, [data-theme="dark"] .hljs-deletion { color: #eea6ac; }
 .message-actions { display: flex; align-items: center; gap: 2px; margin: 8px 0 0 -5px; }
 .incomplete { color: var(--muted); font-size: 12px; margin-top: 8px; }
 .inherited { padding: 8px 12px 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
@@ -658,6 +681,12 @@ dialog[open]::backdrop { opacity: 1; }
 .auth-form label { display: grid; gap: 7px; font-size: 12px; font-weight: 550; }
 .auth-form input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 12px; font-size: 14px; }
 .auth-form input::placeholder { color: var(--subtle); font-size: 13px; }
+.auth-password-entry { position: relative; margin-top: -10px; }
+.auth-password-entry input { padding-right: 48px; }
+.auth-password-entry button { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); }
+.usage-note { margin-top: 12px; font-size: 11px; color: var(--muted); line-height: 1.6; }
+.usage-note.exhausted { color: var(--accent-strong); }
+.mode-option:has(input:disabled) { opacity: .55; }
 .auth-submit { min-height: 43px; margin-top: 5px; }
 .auth-submit:disabled { opacity: .6; }
 .auth-switch { text-align: center; font-size: 12px; color: var(--muted); }
@@ -719,6 +748,7 @@ dialog.conversation-search { width: 620px; max-width: calc(100vw - 32px); max-he
   .map-panel { position: fixed; z-index: 10; inset: 0 0 0 auto; width: min(92vw, 450px); }
   .map-hidden .map-panel { translate: 100% 0; }
   .map-resize { display: none; }
+  #map-expand { display: none; }
 }
 @media (max-width: 730px) {
   :root { --header-height: 64px; --sidebar-rail: 50px; }

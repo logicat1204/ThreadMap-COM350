@@ -97,7 +97,21 @@ sudo journalctl -u threadmap -n 60 --no-pager
 sudo journalctl -u caddy -n 60 --no-pager
 ```
 
-## 5. Preparar AWS para CI/CD
+## 5. Actualizar manualmente por SSH
+
+Para esta demo puedes terminar aquí la configuración de infraestructura. No necesitas S3, SSM ni GitHub Actions para actualizar. Después de hacer commit y push desde tu PC, ejecuta dentro de EC2:
+
+```bash
+cd ~/threadmap-setup &&
+git pull --ff-only origin main &&
+git archive --format=tar.gz --output /tmp/threadmap-release.tar.gz HEAD \
+  package.json package-lock.json server.js accounts.js runtime.js public &&
+sudo /usr/local/sbin/threadmap-deploy /tmp/threadmap-release.tar.gz "$(git rev-parse HEAD)"
+```
+
+El script instala las dependencias, respalda SQLite y reinicia el servicio con la nueva versión. Las fuentes matemáticas y bibliotecas de formato están dentro de `public/vendor` y viajan en el paquete. El cupo de cinco mensajes se conserva en la base de datos. Evita modificar el código directamente en EC2 para reducir conflictos al hacer pull.
+
+## 6. Opcional: preparar AWS para CI/CD
 
 ### Bucket privado
 
@@ -140,7 +154,7 @@ Comprueba **EC2 → instancia → Connect → Session Manager**. Debe permitir c
 5. Añade al rol una política inline usando `github-permissions.json`. Sustituye `ACCOUNT_ID`, `REGION`, `INSTANCE_ID` y `BUCKET_NAME`. El rol podrá subir paquetes y ejecutar comandos solo en esa instancia, además de consultar el resultado del comando.
 6. Copia el ARN del rol de GitHub.
 
-## 6. Activar GitHub Actions
+## 7. Opcional: activar GitHub Actions
 
 En **repositorio → Settings → Secrets and variables → Actions → Variables**, crea variables de repositorio:
 

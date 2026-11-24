@@ -31,6 +31,7 @@ const drafts = new Map();
 const shownContext = new Set();
 const providerNames = { openai: 'OpenAI', gemini: 'Gemini' };
 let providerConfig = {};
+let usage = account.usage;
 let mapWidth = null;
 let activeSelection = null;
 let flashId = null;
@@ -56,7 +57,7 @@ const state = initialState();
 if (!state.threads.some((thread) => thread.id === state.threadId)) state.threadId = state.threads[0].id;
 if (!currentThread().branches[state.branchId]) state.branchId = currentThread().rootId;
 let connection = {
-  provider: readPreference('threadmap.provider') === 'gemini' ? 'gemini' : 'openai',
+  provider: readPreference('threadmap.provider') === 'openai' ? 'openai' : 'gemini',
   mode: readPreference('threadmap.connection') === 'personal' ? 'personal' : 'platform',
   key: '',
 };
@@ -329,7 +330,7 @@ function renderHeader() {
 }
 
 function canReply({ provider, mode, key } = connection) {
-  return mode === 'personal' ? Boolean(key) : Boolean(providerConfig[provider]?.platformAvailable);
+  return mode === 'personal' ? Boolean(key) : usage.remaining > 0 && Boolean(providerConfig[provider]?.platformAvailable);
 }
 
 function renderConnection() {
@@ -338,7 +339,8 @@ function renderConnection() {
   const name = providerNames[provider];
   byId('connection').classList.toggle('connected', live);
   const label = byId('connection-label');
-  if (live) label.textContent = `${name} · ${mode === 'personal' ? 'Personal' : 'Plataforma'}`;
+  if (mode === 'platform' && usage.remaining === 0) label.textContent = 'Añade tu API key';
+  else if (live) label.textContent = `${name} · ${mode === 'personal' ? 'Personal' : `${usage.remaining} gratis`}`;
   else if (mode === 'personal') label.textContent = `Conecta ${name}`;
   else label.textContent = provider === 'openai' ? 'Modo demo' : 'Gemini · Demo';
 }
@@ -547,7 +549,9 @@ function updateError() {
   const hasKey = canReply();
   byId('error-text').textContent = issue || (hasKey
     ? 'La pregunta está pendiente de respuesta.'
-    : `Conecta ${providerNames[connection.provider]} para responder a esta pregunta.`);
+    : connection.mode === 'platform' && usage.remaining === 0
+      ? 'Usaste tus 5 mensajes gratuitos. Añade tu propia API key para continuar.'
+      : `Conecta ${providerNames[connection.provider]} para responder a esta pregunta.`);
   byId('error-action').textContent = hasKey ? 'Reintentar' : 'Configurar API';
   byId('error-action').onclick = () => hasKey ? reply(currentThread(), currentBranch()) : openSettings();
 }
@@ -579,6 +583,11 @@ async function reply(thread, branch) {
       signal: controller.signal,
     });
     const data = await response.json();
+    if (data.usage) {
+      usage = data.usage;
+      renderConnection();
+      if (settings.open) updateSettingsFields();
+    }
     if (!response.ok) throw new Error(data.error);
     const answer = message('assistant', data.answer);
     if (data.incomplete) answer.incomplete = true;
@@ -604,6 +613,10 @@ function sendQuestion(event) {
   const { text, source } = draft();
   const question = text.trim();
   if (!question || requests.has(state.branchId) || typing.has(state.branchId)) return;
+  if (connection.mode === 'platform' && usage.remaining === 0) {
+    openSettings();
+    return;
+  }
   const thread = currentThread();
   let branch = currentBranch();
   drafts.delete(branch.id);
@@ -667,6 +680,7 @@ function locateSelection() {
 
 function updateSettingsFields() {
   const provider = settingsForm.elements.provider.value;
+  if (usage.remaining === 0) settingsForm.elements.mode.value = 'personal';
   const isPersonal = settingsForm.elements.mode.value === 'personal';
   const config = providerConfig[provider];
   const isGemini = provider === 'gemini';
@@ -677,6 +691,12 @@ function updateSettingsFields() {
   byId('platform-note').textContent = config?.platformAvailable
     ? `Usa la clave de ${providerNames[provider]} configurada por el equipo.`
     : 'Pendiente de configuración en el servidor.';
+  const exhausted = usage.remaining === 0;
+  settingsForm.querySelector('[name="mode"][value="platform"]').disabled = exhausted;
+  byId('usage-note').textContent = exhausted
+    ? 'Usaste tus 5 mensajes gratuitos. Para continuar, conecta tu propia API key.'
+    : `${usage.remaining} de ${usage.limit} mensajes gratuitos disponibles por cuenta. Se comparten entre conversaciones y proveedores.`;
+  byId('usage-note').classList.toggle('exhausted', exhausted);
   byId('personal-note').textContent = isGemini
     ? 'Usa la cuota del proyecto asociado a tu clave de Google AI Studio.'
     : 'El uso se carga a tu cuenta de OpenAI.';
@@ -695,7 +715,7 @@ function openSettings() {
   byId('auto-open-map').checked = autoOpenMap;
   const { provider, mode, key } = connection;
   settingsForm.elements.provider.value = provider;
-  settingsForm.elements.mode.value = providerConfig[provider]?.platformAvailable ? mode : 'personal';
+  settingsForm.elements.mode.value = usage.remaining === 0 ? 'personal' : mode;
   personalInput.value = key;
   setKeyVisibility(false);
   byId('settings-error').hidden = true;
@@ -766,6 +786,10 @@ function updatePanels() {
 function showMap(visible) {
   const opening = visible && !mapVisible;
   mapVisible = visible;
+  if (visible && narrowMap.matches && !expanded) {
+    dockedMapView = graph.getView();
+    expanded = true;
+  }
   if (!visible) graph.hidePreview();
   if (visible && narrowSidebar.matches) sidebarVisible = false;
   if (!visible && expanded) setMapExpanded(false);
@@ -926,7 +950,10 @@ byId('sidebar-close').onclick = () => {
   byId('sidebar-open').focus();
 };
 function closeOverlay() {
-  if (expanded) {
+  if (mapVisible && narrowMap.matches) {
+    showMap(false);
+    mapToggle.focus();
+  } else if (expanded) {
     setMapExpanded(false);
   } else if (mapVisible && narrowMap.matches) {
     showMap(false);
@@ -968,7 +995,10 @@ document.addEventListener('keydown', (event) => {
 byId('zoom-in').onclick = () => graph.zoomBy(1.2);
 byId('zoom-out').onclick = () => graph.zoomBy(1 / 1.2);
 byId('zoom-fit').onclick = graph.fit;
-narrowMap.addEventListener('change', updatePanels);
+narrowMap.addEventListener('change', () => {
+  if (mapVisible && narrowMap.matches && !expanded) setMapExpanded(true);
+  else updatePanels();
+});
 narrowSidebar.addEventListener('change', () => {
   sidebarVisible = !narrowSidebar.matches && readPreference('threadmap.sidebar') !== 'collapsed';
   updatePanels();
@@ -992,6 +1022,16 @@ applyTheme();
 updatePanels();
 navigate(state.threadId, state.branchId);
 renderConnection();
+window.addEventListener('focus', async () => {
+  try {
+    const response = await fetch('/api/usage');
+    if (!response.ok) return;
+    usage = (await response.json()).usage;
+    renderConnection();
+    updateError();
+    if (settings.open) updateSettingsFields();
+  } catch { /* The server still enforces the quota if this refresh fails. */ }
+});
 fetch('/api/config')
   .then(async (response) => {
     if (!response.ok) return;

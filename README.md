@@ -13,7 +13,7 @@ Abre [ThreadMap](http://127.0.0.1:3000), crea una cuenta y empieza una conversac
 
 ## Cuentas e historial
 
-El registro utiliza nombre, correo y contraseña de al menos ocho caracteres. Esta versión de demo no envía correos de confirmación ni ofrece recuperación de contraseña por email. Better Auth gestiona los hashes de contraseña y las sesiones con cookies HttpOnly y SameSite. Las sesiones duran hasta siete días; cerrar sesión las invalida en el servidor.
+El registro utiliza nombre, correo y contraseña de al menos ocho caracteres. El botón del ojo permite mostrar u ocultar la contraseña tanto al entrar como al registrarse. Esta versión de demo no envía correos de confirmación ni ofrece recuperación de contraseña por email. Better Auth gestiona los hashes de contraseña y las sesiones con cookies HttpOnly y SameSite. Las sesiones duran hasta siete días; cerrar sesión las invalida en el servidor.
 
 El primer inicio crea automáticamente `data/threadmap.sqlite` y `data/session-secret`. Las cuentas, sesiones y árboles de conversación se guardan en SQLite; el historial queda separado por usuario. Ambos archivos son privados y están excluidos de Git. Para conservarlos, respalda el directorio `data` con el servidor detenido. No elimines el secreto de sesión si quieres mantener las sesiones entre reinicios.
 
@@ -21,7 +21,7 @@ Puedes ajustar `DATABASE_PATH`, `APP_URL` y `BETTER_AUTH_SECRET` en `.env`. En l
 
 ## Despliegue en EC2
 
-Sigue [la guía de Ubuntu 26.04 y CI/CD](deploy/README.md) para publicar la instancia `threadmap`, con SSH para administración, Caddy para HTTPS y GitHub Actions con OIDC/SSM para actualizar el código. El instalador y el script de versiones conservan cuentas e historial fuera del código. El workflow no despliega hasta configurar `DEPLOY_ENABLED=true`.
+Sigue [la guía de Ubuntu 26.04](deploy/README.md) para publicar la instancia `threadmap`, con SSH para administración y Caddy para HTTPS. Puedes actualizar manualmente por SSH; GitHub Actions con OIDC/SSM es opcional. El instalador y el script de versiones conservan cuentas e historial fuera del código. El workflow no despliega hasta configurar `DEPLOY_ENABLED=true`.
 
 `TRUST_PROXY=loopback` permite usar la IP que el Caddy local sobrescribe en `X-ThreadMap-Client-IP`; cabeceras de otros pares no se consideran confiables. `AUTH_SIGNIN_RATE_LIMIT` y `AUTH_SIGNUP_RATE_LIMIT` configuran intentos por minuto e IP (8 y 5 por defecto, 30 y 20 en la plantilla de producción). `GET /health` permite comprobar que el proceso está disponible.
 
@@ -31,7 +31,9 @@ El guardado es automático. Si falla, puedes reintentarlo o descargar tus cambio
 
 ## Conectar OpenAI o Gemini
 
-En **Configuración**, elige el **Proveedor** y el **Modo de conexión**.
+En **Configuración**, elige el **Proveedor** y el **Modo de conexión**. La selección inicial es **Gemini → Clave de la plataforma**; se respeta una elección anterior del navegador.
+
+Cada cuenta tiene **5 mensajes gratuitos en total**, compartidos entre proveedores, conversaciones, ramas y chats temporales. El cupo se guarda en SQLite y no se reinicia al cerrar sesión, borrar conversaciones o reiniciar el servidor. Se reserva de forma atómica antes de llamar al proveedor y se devuelve si la solicitud falla. Al agotarlo, la interfaz solicita una API key personal; el servidor también bloquea cualquier intento de seguir usando la clave de plataforma. Las claves personales no consumen ese cupo. Al actualizar una base existente, las cuentas reciben el nuevo cupo de cinco; no se estima el uso anterior a partir del historial editable.
 
 - **Clave de la plataforma.** Crea `.env` a partir de `.env.example` si aún no existe. Configura `OPENAI_API_KEY` para OpenAI, `GEMINI_API_KEY` para Gemini, o ambas. Reinicia el servidor y elige **Clave de la plataforma**. Las claves se usan en el servidor y la interfaz solo recibe su estado de disponibilidad.
 - **Clave personal.** Selecciona **Mi propia clave**, pega una clave del proveedor seleccionado y guarda. Para Gemini, puedes crearla en [Google AI Studio](https://aistudio.google.com/apikey). La clave queda en memoria hasta que recargues, cierres la página o guardes otra conexión.
@@ -59,6 +61,10 @@ El historial se guarda en el servidor por cuenta. El tema se guarda en el navega
 
 Ambos proveedores reciben la instrucción: `responde de forma directa, breve y muy tecnica.`
 
+En pantallas estrechas, el botón de ramas abre directamente el mapa como ventana grande con bordes redondeados y fondo desenfocado. Escape, el fondo exterior o el propio botón lo cierran.
+
+Las respuestas renderizan fórmulas con KaTeX: `$…$` y `\(…\)` en línea, `$$…$$` y `\[…\]` en bloques. Los bloques de código incluyen resaltado de sintaxis y un botón para copiar todo su contenido. Las dependencias y fuentes se sirven desde `public/vendor`, sin CDN. Para actualizarlas ejecuta `npm run vendor` después de actualizar los paquetes y guarda esos archivos junto con el lockfile.
+
 ## Chat temporal
 
 En una conversación nueva, activa **Chat temporal** antes de enviar el primer mensaje. La conversación y sus ramas se mantienen en memoria mientras estés en ese chat y se descartan al navegar a otro o recargar. Al solicitar una respuesta, el proveedor de IA seleccionado recibe el contexto de la rama.
@@ -69,4 +75,4 @@ En una conversación nueva, activa **Chat temporal** antes de enviar el primer m
 npm test
 ```
 
-Las pruebas cubren el contexto de ramas anidadas y hermanas, el colapso de nodos y la selección de credenciales y modelos para ambos proveedores. También prueban el registro real con cookies, aislamiento entre cuentas, hashes de contraseña, cierre de sesión, persistencia al reabrir SQLite, conflictos entre pestañas, validación de árboles, exclusión de chats temporales y limitación de intentos de acceso. Los proveedores de IA se simulan para ejecutar las pruebas sin claves ni cargos. Las pruebas de cuentas necesitan permiso para abrir conexiones HTTP locales y crean bases temporales independientes.
+Las pruebas cubren el contexto de ramas anidadas y hermanas, el colapso de nodos y la selección de credenciales y modelos para ambos proveedores. También prueban el registro real con cookies, aislamiento entre cuentas, hashes de contraseña, cierre de sesión, persistencia al reabrir SQLite, conflictos entre pestañas, validación de árboles, exclusión de chats temporales y limitación de intentos de acceso. El cupo se verifica con solicitudes simultáneas, errores, dos cuentas, ambos proveedores y claves personales. Las pruebas de renderizado cubren notación cuántica, bloques matemáticos, resaltado, copia completa y contenido no confiable. Los proveedores de IA se simulan para ejecutar las pruebas sin claves ni cargos. Las pruebas de cuentas necesitan permiso para abrir conexiones HTTP locales y crean bases temporales independientes.

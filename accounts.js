@@ -11,6 +11,8 @@ export class AccountError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
 
+export const FREE_MESSAGE_LIMIT = 5;
+
 function localSecret(directory) {
   const path = resolve(directory, 'session-secret');
   try { writeFileSync(path, randomBytes(48).toString('base64url'), { flag: 'wx', mode: 0o600 }); }
@@ -103,6 +105,18 @@ export async function createAccounts({
       user_id TEXT PRIMARY KEY REFERENCES user(id) ON DELETE CASCADE,
       document TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 0
     )`);
+    db.exec(`CREATE TABLE IF NOT EXISTS platform_usage (
+      user_id TEXT PRIMARY KEY REFERENCES user(id) ON DELETE CASCADE,
+      used INTEGER NOT NULL DEFAULT 0 CHECK (used >= 0)
+    )`);
+    const usage = db.prepare('SELECT used FROM platform_usage WHERE user_id = ?');
+    const addUsage = db.prepare('INSERT OR IGNORE INTO platform_usage (user_id) VALUES (?)');
+    const reserve = db.prepare('UPDATE platform_usage SET used = used + 1 WHERE user_id = ? AND used < ?');
+    const refund = db.prepare('UPDATE platform_usage SET used = used - 1 WHERE user_id = ? AND used > 0');
+    const reserveMessage = db.transaction((userId) => {
+      addUsage.run(userId);
+      return reserve.run(userId, FREE_MESSAGE_LIMIT).changes === 1;
+    });
     const load = db.prepare('SELECT document, revision FROM workspace WHERE user_id = ?');
     const insert = db.prepare('INSERT OR IGNORE INTO workspace (user_id, document, revision) VALUES (?, ?, 0)');
     const update = db.prepare('UPDATE workspace SET document = ?, revision = revision + 1 WHERE user_id = ? AND revision = ?');
@@ -117,6 +131,12 @@ export async function createAccounts({
     return {
       authHandler: toNodeHandler(auth),
       async getSession(request) { return auth.api.getSession({ headers: fromNodeHeaders(request.headers) }); },
+      getUsage(userId) {
+        const used = usage.get(userId)?.used ?? 0;
+        return { limit: FREE_MESSAGE_LIMIT, used, remaining: Math.max(0, FREE_MESSAGE_LIMIT - used) };
+      },
+      reserveMessage,
+      refundMessage(userId) { refund.run(userId); },
       loadWorkspace(userId) {
         const row = load.get(userId);
         return row ? { workspace: JSON.parse(row.document), revision: row.revision } : { workspace: null, revision: 0 };

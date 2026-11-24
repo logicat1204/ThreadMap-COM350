@@ -1,5 +1,17 @@
+import { setIcon } from './view.js';
+
 const byId = (id) => document.getElementById(id);
 let signingUp = false;
+
+function setPasswordVisibility(visible) {
+  byId('auth-password').type = visible ? 'text' : 'password';
+  const button = byId('reveal-password');
+  setIcon(button, visible ? 'eye-off' : 'eye');
+  button.title = visible ? 'Ocultar contraseña' : 'Mostrar contraseña';
+  button.setAttribute('aria-label', button.title);
+  button.setAttribute('aria-pressed', String(visible));
+}
+byId('reveal-password').onclick = () => setPasswordVisibility(byId('auth-password').type === 'password');
 
 function authMessage(data) {
   const messages = {
@@ -20,6 +32,7 @@ function showAccessError(message) {
 
 byId('auth-switch').onclick = () => {
   signingUp = !signingUp;
+  setPasswordVisibility(false);
   byId('auth-title').textContent = signingUp ? 'Tu próxima idea empieza aquí' : 'Bienvenido de nuevo';
   byId('auth-description').textContent = signingUp ? 'Crea tu cuenta y explora tus propias conversaciones.' : 'Inicia sesión para continuar tus conversaciones.';
   byId('auth-name-field').hidden = !signingUp;
@@ -65,6 +78,9 @@ export async function loadAccount() {
     if (!response.ok) throw new Error('No se pudo comprobar tu sesión.');
     const { user } = await response.json();
     if (user) {
+      const usageResponse = await fetch('/api/usage');
+      if (!usageResponse.ok) throw new Error('No se pudo comprobar tu cupo de mensajes. Recarga para continuar.');
+      const { usage } = await usageResponse.json();
       const saved = await fetch('/api/workspace');
       if (!saved.ok) throw new Error('No se pudo cargar tu historial. Recarga para volver a intentarlo.');
       const data = await saved.json();
@@ -73,7 +89,7 @@ export async function loadAccount() {
       byId('account-avatar').textContent = user.name.slice(0, 1).toLocaleUpperCase('es');
       byId('auth-screen').hidden = true;
       byId('workspace').hidden = false;
-      return { user, ...data };
+      return { user, usage, ...data };
     }
   } catch (error) {
     showAccessError(error.message || 'No se pudo conectar con ThreadMap.');

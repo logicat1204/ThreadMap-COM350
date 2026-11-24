@@ -1,4 +1,6 @@
 import { branchPreview, branchTitle, rankChildren } from './threads.js';
+import katex from './vendor/katex/katex.mjs';
+import hljs from './vendor/highlight/highlight.js';
 
 const shapes = {
   'panel-right-open': '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16m-5-7-3-3 3-3"/>',
@@ -59,13 +61,27 @@ export function action(label, glyph, handler, className = 'icon-button small') {
   return button;
 }
 
+function mathExpression(source, displayMode) {
+  const expression = el(displayMode ? 'div' : 'span', `math-expression${displayMode ? ' math-display' : ''}`);
+  katex.render(source, expression, { displayMode, throwOnError: false, trust: false, strict: 'ignore', maxExpand: 500, maxSize: 20 });
+  return expression;
+}
+
 function appendInline(element, text) {
-  const parts = text.split(/(`[^`\n]+`|\*\*[^*\n]+\*\*|\*[^*\n]+\*)/g);
+  const parts = text.split(/(`[^`\n]+`|\$\$[^\n]+?\$\$|\\\([^\n]+?\\\)|(?<!\\)\$(?!\s|\$)(?:\\.|[^$\\\n])+?(?<!\\)\$|\*\*[^\n]+?\*\*|\*[^*\n]+\*)/g);
   for (const part of parts) {
     if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
       element.append(el('code', '', part.slice(1, -1)));
+    } else if (part.startsWith('$$') && part.endsWith('$$') && part.length > 4) {
+      element.append(mathExpression(part.slice(2, -2), false));
+    } else if (part.startsWith('\\(') && part.endsWith('\\)')) {
+      element.append(mathExpression(part.slice(2, -2), false));
+    } else if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
+      element.append(mathExpression(part.slice(1, -1), false));
     } else if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
-      element.append(el('strong', '', part.slice(2, -2)));
+      const strong = el('strong');
+      appendInline(strong, part.slice(2, -2));
+      element.append(strong);
     } else if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
       element.append(el('em', '', part.slice(1, -1)));
     } else {
@@ -74,27 +90,68 @@ function appendInline(element, text) {
   }
 }
 
+function codeBlock(source, language) {
+  const block = el('section', 'code-block');
+  const header = el('div', 'code-header');
+  const code = el('code', 'hljs', source);
+  let highlighted;
+  if (source.length <= 100_000 && !/^(?:text|txt|plaintext|plain)$/i.test(language)) {
+    highlighted = hljs.getLanguage(language) ? hljs.highlight(source, { language, ignoreIllegals: true })
+      : hljs.highlightAuto(source, ['javascript', 'typescript', 'python', 'json', 'bash', 'sql', 'xml', 'css', 'java', 'cpp', 'rust', 'go', 'yaml']);
+    code.innerHTML = highlighted.value;
+  }
+  const label = el('span', 'code-language', language || highlighted?.language || 'texto');
+  const copy = action('Copiar código', 'copy', async () => {
+    try {
+      await navigator.clipboard.writeText(source);
+      feedback.textContent = 'Copiado';
+      setIcon(copy.firstElementChild, 'check');
+    } catch {
+      feedback.textContent = 'No se pudo copiar';
+    }
+    setTimeout(() => { feedback.textContent = 'Copiar'; setIcon(copy.firstElementChild, 'copy'); }, 2200);
+  }, 'code-copy');
+  const glyph = el('span');
+  setIcon(glyph, 'copy');
+  const feedback = el('span', '', 'Copiar');
+  feedback.setAttribute('role', 'status');
+  copy.replaceChildren(glyph, feedback);
+  header.append(label, copy);
+  const pre = el('pre');
+  pre.append(code);
+  block.append(header, pre);
+  return block;
+}
+
 export function responseText(content) {
   const container = el('div', 'response-text');
   let paragraph = null;
   let list = null;
-  let code = null;
-  for (const line of content.split(/\r?\n/)) {
-    if (line.startsWith('```')) {
-      const opening = !code;
-      if (opening) {
-        code = el('code');
-        const block = el('pre');
-        block.append(code);
-        container.append(block);
-      } else {
-        code.textContent = code.textContent.replace(/\n$/, '');
-        code = null;
+  const lines = content.split(/\r?\n/);
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index];
+    const fence = /^\s{0,3}(`{3,}|~{3,})([^\s`]*)[^\n]*$/.exec(line);
+    if (fence) {
+      const code = [];
+      const closing = new RegExp(`^\\s{0,3}${fence[1][0]}{${fence[1].length},}\\s*$`);
+      while (++index < lines.length && !closing.test(lines[index])) code.push(lines[index]);
+      container.append(codeBlock(code.join('\n'), fence[2].toLowerCase()));
+      paragraph = null;
+      list = null;
+    } else if (/^\s*(\$\$|\\\[)/.test(line)) {
+      const start = line.trimStart();
+      const close = start.startsWith('$$') ? '$$' : '\\]';
+      let source = start.slice(2);
+      while (!source.includes(close) && index + 1 < lines.length) source += '\n' + lines[++index];
+      const end = source.indexOf(close);
+      if (end < 0) container.append(el('p', '', line + source.slice(start.length - 2)));
+      else {
+        container.append(mathExpression(source.slice(0, end), true));
+        const suffix = source.slice(end + 2).trim();
+        if (suffix) { const after = el('p'); appendInline(after, suffix); container.append(after); }
       }
       paragraph = null;
       list = null;
-    } else if (code) {
-      code.append(line + '\n');
     } else if (!line.trim()) {
       paragraph = null;
       list = null;
@@ -133,6 +190,12 @@ export function responseText(content) {
 }
 
 export function revealResponse(body, scrollArea, onFinish) {
+  // Keep equations, highlighted tokens and copy controls intact while revealing rich responses.
+  if (body.querySelector('.math-expression, .code-block')) {
+    body.animate([{ opacity: .4 }, { opacity: 1 }], { duration: 240, easing: 'ease-out' });
+    onFinish();
+    return;
+  }
   const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
   const pieces = [];
   let total = 0;
