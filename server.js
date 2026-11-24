@@ -6,7 +6,11 @@ import { createAccounts } from './accounts.js';
 import { appOrigin, allowsHost, allowsOrigin, clientAddress } from './runtime.js';
 
 const assets = {
-  '/': ['index.html', 'text/html; charset=utf-8'],
+  '/': ['landing.html', 'text/html; charset=utf-8'],
+  '/app': ['index.html', 'text/html; charset=utf-8'],
+  '/landing.css': ['landing.css', 'text/css; charset=utf-8'],
+  '/landing.js': ['landing.js', 'text/javascript; charset=utf-8'],
+  '/appearance.js': ['appearance.js', 'text/javascript; charset=utf-8'],
   '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
   '/account.js': ['account.js', 'text/javascript; charset=utf-8'],
   '/search.js': ['search.js', 'text/javascript; charset=utf-8'],

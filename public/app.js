@@ -2,6 +2,7 @@ import { branchTitle, contextFor, createBranch, createThread, lineage, message, 
 import { action, createMap, el, responseText, revealResponse, setIcon } from './view.js';
 import { loadAccount, signOut } from './account.js';
 import { searchConversations } from './search.js';
+import { toggleTheme } from './appearance.js';
 
 document.querySelectorAll('[data-icon]').forEach((element) => setIcon(element, element.dataset.icon));
 const account = await loadAccount();
@@ -61,7 +62,6 @@ let connection = {
   mode: readPreference('threadmap.connection') === 'personal' ? 'personal' : 'platform',
   key: '',
 };
-let theme = readPreference('threadmap.appearance', 'dark');
 const autoOpenMapKey = `threadmap.autoOpenMap.${account.user.id}`;
 let autoOpenMap = readPreference(autoOpenMapKey, 'true') !== 'false';
 let mapVisible = !narrowMap.matches && Object.keys(currentThread().branches).length > 1;
@@ -727,8 +727,7 @@ function openSettings() {
 }
 
 function applyTheme() {
-  const dark = theme === 'dark';
-  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  const dark = document.documentElement.dataset.theme === 'dark';
   setIcon(byId('theme-control').firstElementChild, dark ? 'sun' : 'moon');
   byId('theme-label').textContent = dark ? 'Modo claro' : 'Modo oscuro';
   renderMap();
@@ -878,8 +877,7 @@ byId('auto-open-map').addEventListener('change', (event) => {
   writePreference(autoOpenMapKey, String(autoOpenMap));
 });
 byId('theme-control').onclick = () => {
-  theme = theme === 'dark' ? 'light' : 'dark';
-  writePreference('threadmap.appearance', theme);
+  toggleTheme();
   applyTheme();
 };
 byId('settings-open').onclick = openSettings;
