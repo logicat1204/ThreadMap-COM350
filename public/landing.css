@@ -111,6 +111,41 @@
 .tour-step h2 { max-width: 24ch; margin-top: 15px; font-size: clamp(1.5rem, 2.3vw, 2rem); line-height: 1.13; letter-spacing: -.045em; }
 .tour-step > p { max-width: 34ch; margin-top: 12px; color: var(--muted); text-wrap: pretty; }
 .tour-step .demo-screen { margin-top: 22px; }
+.tour:not([data-motion]) .tour-board { display: none; }
+.tour:not([data-motion]) .tour-step:first-child { margin-top: 0; }
+
+/* Each static scene frames only the part of the conversation it explains. */
+.demo-closeup { font-size: 1rem; max-width: 680px; }
+.demo-closeup .demo-topbar { grid-template-columns: 1fr; }
+.demo-closeup .demo-window-title { display: none; }
+.demo-closeup .demo-workspace { display: block; min-height: 0; }
+.demo-closeup .demo-chat { gap: 20px; padding: 20px; }
+.demo-closeup .demo-chat-body { display: block; }
+.demo-closeup .demo-turn { transition: none; }
+.demo-closeup .demo-composer { font-size: .875rem; }
+.demo-closeup[data-scene="selection"] .demo-chat { padding-top: 66px; }
+.demo-closeup[data-scene="selection"] .demo-answer ol { list-style: none; padding: 0; margin: 0; }
+.demo-closeup .demo-selection { left: auto; right: 0; font-size: .875rem; padding: 9px 10px; }
+.demo-closeup .demo-map { display: grid; min-height: 0; border-left: 0; }
+.demo-closeup .demo-map-heading { min-height: 44px; padding-inline: 14px; }
+.demo-closeup .demo-map-heading strong { font-size: .875rem; }
+.demo-closeup .demo-graph { height: 300px; }
+.demo-closeup .demo-node { min-height: 76px; padding: 7px; font-size: .875rem; line-height: 1.25; }
+.demo-closeup .demo-node-preview {
+  position: static;
+  width: auto;
+  max-height: none;
+  margin: 0;
+  padding: 20px;
+  border: 0;
+  border-radius: 0;
+  font-size: 1rem;
+  box-shadow: none;
+}
+.demo-closeup .branch-preview-question { font-size: 1.25rem; }
+.demo-closeup .branch-preview-section h4 { font-size: .875rem; }
+.demo-closeup .branch-preview-source summary, .explorer-detail .branch-preview-source summary { padding-block: 12px; }
+.demo-closeup .branch-preview-source summary { font-size: .875rem; }
 
 @media (min-width: 981px) and (min-height: 650px) and (prefers-reduced-motion: no-preference) {
   .tour[data-motion] .tour-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(205px, 23%); align-items: start; gap: clamp(25px, 4vw, 58px); }
@@ -400,37 +435,32 @@
   .site-nav .brand-mark svg { width: 22px; height: 22px; }
   .site-sections { display: none; }
   .site-access { gap: 9px; }
-  .site-theme.icon-button { width: 30px; height: 30px; }
+  .site-theme.icon-button { width: 44px; height: 44px; }
+  .site-login { display: inline-flex; align-items: center; min-height: 44px; }
   .site-access .site-login, .site-access .site-button { font-size: .8125rem; }
-  .site-access .site-button { padding-inline: 8px; }
+  .site-access .site-button { display: none; }
   .landing-hero { padding-bottom: 40px; }
   .landing-hero > p { margin-top: 17px; }
-  .demo-workspace { grid-template-columns: minmax(0, 1fr) minmax(185px, 37%); min-height: 306px; }
-  .demo-sidebar { display: none; }
   .map-explorer { grid-template-columns: minmax(0, 1fr); }
   .explorer-detail { border-top: 1px solid var(--line); border-left: 0; }
-  .explorer-graph { min-height: 245px; }
+  .explorer-graph { min-height: 360px; }
+  .explorer-node { min-height: 100px; padding: 8px 6px; font-size: .875rem; line-height: 1.25; touch-action: manipulation; }
+  .demo-closeup .demo-chat { padding-inline: 16px; }
 }
 
 @media (max-width: 500px) {
   .site-nav { gap: 6px; }
   .landing-hero h1 { font-size: clamp(2.65rem, 11.3vw, 3.6rem); }
-  .demo-topbar { grid-template-columns: 1fr auto; }
-  .demo-window-title { display: none; }
-  .demo-workspace { grid-template-columns: minmax(0, 1fr); min-height: 263px; }
-  .demo-chat { padding: 13px; }
-  .demo-map { display: none; }
-  .demo-screen:is([data-scene="branch"], [data-scene="preview"]) .demo-map { display: grid; min-height: 227px; border-top: 1px solid var(--line); border-left: 0; }
-  .demo-screen[data-scene="preview"] .demo-map { grid-template-rows: auto minmax(150px, 1fr) auto auto; }
-  .demo-screen[data-scene="preview"] .demo-node-preview { position: static; width: auto; max-height: none; margin: 0 11px 10px; }
+  .hero-actions .site-button { flex: 1; }
+  .demo-closeup .demo-node { font-size: .8125rem; padding: 5px; }
   .features-grid { grid-template-columns: minmax(0, 1fr); }
   .site-footer nav { gap: 10px; }
 }
 
 @media (max-width: 365px) {
-  .landing { --landing-nav-height: 91px; }
-  .site-nav { grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 2px; padding-block: 6px; }
-  .site-nav .brand, .site-access { justify-self: center; }
+  .site-access { gap: 4px; }
+  .site-nav .brand { font-size: 1rem; }
+  .site-nav .brand-mark { margin-right: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {

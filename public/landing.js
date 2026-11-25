@@ -63,9 +63,32 @@ const steps = [...tour.querySelectorAll('.tour-step')];
 const motion = matchMedia('(min-width: 981px) and (min-height: 650px) and (prefers-reduced-motion: no-preference)');
 
 showExample(preview.querySelector('.demo-node-preview'), 'certificate');
-for (const step of steps.slice(1)) {
+for (const step of steps) {
   const scene = preview.cloneNode(true);
   scene.dataset.scene = step.dataset.scene;
+  scene.classList.add('demo-closeup');
+  scene.querySelector('.demo-sidebar').remove();
+  scene.querySelector('.demo-window-tools').remove();
+  if (step.dataset.scene === 'chat' || step.dataset.scene === 'selection') {
+    scene.querySelector('.demo-map').remove();
+    scene.querySelector('.demo-turn-branch').remove();
+    if (step.dataset.scene === 'selection') {
+      scene.querySelector('.demo-answer > p').remove();
+      scene.querySelectorAll('.demo-answer li:not(:first-child)').forEach((item) => item.remove());
+      scene.querySelector('.demo-question').remove();
+    }
+  } else {
+    scene.querySelector('.demo-chat').remove();
+    scene.querySelector('.demo-map-footer').remove();
+    if (step.dataset.scene === 'branch') {
+      scene.querySelector('.demo-node-preview').remove();
+    } else {
+      scene.querySelector('.demo-graph').remove();
+      // The static preview can expand its source answer, just like the explorer.
+      scene.removeAttribute('inert');
+      scene.removeAttribute('aria-hidden');
+    }
+  }
   step.append(scene);
 }
 
